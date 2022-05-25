@@ -1,0 +1,114 @@
+const { faker } = require("@faker-js/faker");
+const supertest = require("supertest");
+
+const app = require("../app");
+const { patientFactory } = require("../factories");
+// const doctorFactory = require("../factories/ Patient");
+const { Patient } = require("../models");
+
+require("dotenv").config();
+
+const client = supertest(app);
+const { connectTestDb, disconnectTestDb, clearDb } = require("./helpers");
+
+describe("Patient", () => {
+  beforeAll(connectTestDb);
+  afterAll(disconnectTestDb);
+
+  afterEach(clearDb);
+
+  it("create a new Patient", async () => {
+    const patient = {
+      name: faker.name.firstName(),
+      phone: faker.phone.phoneNumber(),
+      email: faker.internet.email(),
+      age: faker.datatype.number({ min: 0, max: 120 }),
+      gender: faker.name.gender(true).toLowerCase(),
+    };
+
+    const response = await client.post("/api/v1/patient").send(patient);
+
+    expect(response.status).toBe(201);
+    expect(response.body.id).toBeDefined();
+    const createdPatient = await Patient.findOne({ _id: response.body.id });
+    expect(createdPatient.name).toBe(patient.name);
+    expect(createdPatient.phone).toBe(patient.phone);
+    expect(createdPatient.email).toBe(patient.email);
+    expect(createdPatient.age).toBe(patient.age);
+    expect(createdPatient.gender).toBe(patient.gender);
+    expect(createdPatient.deleted).toBe(false);
+  });
+
+  it("list all patients", async () => {
+    const patient1 = await patientFactory.makePatient();
+    const patient2 = await patientFactory.makePatient();
+    const patient3 = await patientFactory.makePatient();
+    const patientIds = [patient1.id, patient2.id, patient3.id];
+    const response = await client.get("/api/v1/patient");
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(3);
+    response.body.forEach((patient) => {
+      expect(patient.id).toBeDefined();
+      expect(patientIds).toContain(patient.id);
+      expect(patient.name).toBeDefined();
+      expect(patient.phone).toBeDefined();
+      expect(patient.email).toBeDefined();
+      expect(patient.age).toBeDefined();
+      expect(patient.gender).toBeDefined();
+      expect(patient.deleted).toBeUndefined();
+    });
+  });
+
+  it("get a patient", async () => {
+    const patient = await patientFactory.makePatient();
+    const response = await client.get(`/api/v1/patient/${patient.id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.id).toBe(patient.id);
+    expect(response.body.name).toBe(patient.name);
+    expect(response.body.phone).toBe(patient.phone);
+    expect(response.body.email).toBe(patient.email);
+    expect(response.body.age).toBe(patient.age);
+    expect(response.body.gender).toBe(patient.gender);
+    expect(response.body.deleted).toBeUndefined();
+  });
+
+  it("update a patient", async () => {
+    const patient = await patientFactory.makePatient();
+    const updatedPatient = {
+      name: faker.name.firstName(),
+      phone: faker.phone.phoneNumber(),
+      email: faker.internet.email(),
+      age: faker.datatype.number({ min: 0, max: 120 }),
+      gender: patient.gender === "female" ? "male" : "female",
+    };
+    const response = await client.put(`/api/v1/patient/${patient.id}`).send(updatedPatient);
+
+    expect(response.status).toBe(200);
+    expect(response.body.id).toBe(patient.id);
+    expect(response.body.name).toBe(updatedPatient.name);
+    expect(response.body.phone).toBe(updatedPatient.phone);
+    expect(response.body.email).toBe(updatedPatient.email);
+    expect(response.body.age).toBe(updatedPatient.age);
+    expect(response.body.gender).toBe(updatedPatient.gender);
+    expect(response.body.deleted).toBeUndefined();
+  });
+
+  it("delete a patient", async () => {
+    const patient = await patientFactory.makePatient();
+    const response = await client.delete(`/api/v1/patient/${patient.id}`);
+
+    expect(response.status).toBe(204);
+    const deletedPatient = await Patient.findOne({ _id: patient.id });
+    expect(deletedPatient.deleted).toBe(true);
+  });
+
+  it("get a deleted patient", async () => {
+    const patient = await patientFactory.makePatient();
+    await client.delete(`/api/v1/patient/${patient.id}`);
+    const response = await client.get(`/api/v1/patient/${patient.id}`);
+
+    expect(response.status).toBe(404);
+  });
+});
