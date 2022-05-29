@@ -2,3 +2,4 @@
 !.env.example
 !.env.docker
 node_modules
+coverage
