@@ -20,7 +20,7 @@ const USGReportSchema = new mongoose.Schema({
     ref: "Doctor",
     required: true,
   },
-  part_of_scan: {
+  partOfScan: {
     type: String,
     required: true,
   },
