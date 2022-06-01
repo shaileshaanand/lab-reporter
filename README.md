@@ -1,2 +1,2 @@
 # Lab Reporter
-Pathology Lab Report Manager
+Pathology Lab Report Management System
