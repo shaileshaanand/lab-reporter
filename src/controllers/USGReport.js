@@ -63,7 +63,42 @@ const deleteUSGReport = async (req, res) => {
 };
 
 const listUSGReports = async (req, res) => {
-  const usgReports = await USGReport.find({ deleted: false }).populate(["patient", "referrer", "sonologist"]);
+  const paramsValidator = Joi.object({
+    patient: Joi.string(),
+    referrer: Joi.string(),
+    sonologist: Joi.string(),
+    partOfScan: Joi.string(),
+    date_before: Joi.date(),
+    date_after: Joi.date(),
+    findings: Joi.string(),
+  });
+  Joi.assert(req.query, paramsValidator);
+  const query = { deleted: false, date: {} };
+  if (req.query.patient) {
+    query.patient = req.query.patient;
+  }
+  if (req.query.referrer) {
+    query.referrer = req.query.referrer;
+  }
+  if (req.query.sonologist) {
+    query.sonologist = req.query.sonologist;
+  }
+  if (req.query.partOfScan) {
+    query.partOfScan = { $regex: req.query.partOfScan, $options: "i" };
+  }
+  if (req.query.date_before) {
+    query.date = { ...query.date, $lte: req.query.date_before };
+  }
+  if (req.query.date_after) {
+    query.date = { ...query.date, $gte: req.query.date_after };
+  }
+  if (req.query.findings) {
+    query.findings = { $regex: req.query.findings, $options: "i" };
+  }
+  if (Object.keys(query.date).length === 0) {
+    delete query.date;
+  }
+  const usgReports = await USGReport.find(query).populate(["patient", "referrer", "sonologist"]);
   res.send(usgReports.map((usgReport) => sanitize(usgReport.toObject())));
 };
 

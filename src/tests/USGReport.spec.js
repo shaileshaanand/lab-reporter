@@ -1,3 +1,5 @@
+const { URLSearchParams } = require("url");
+
 const { faker } = require("@faker-js/faker");
 const supertest = require("supertest");
 
@@ -205,5 +207,211 @@ describe("USGReport", () => {
     const response = await client.delete(`/api/v1/usg-report/${faker.datatype.uuid()}`);
 
     expect(response.status).toBe(404);
+  });
+
+  it("get all USGReports with filter by patient", async () => {
+    const patient = await patientFactory.makePatient();
+    const usgReports = await Promise.all([
+      usgReportFactory.makeUSGReport({ patient: patient._id }),
+      usgReportFactory.makeUSGReport({ patient: patient._id }),
+      usgReportFactory.makeUSGReport(),
+    ]);
+
+    const usgReportIds = [usgReports[0], usgReports[1]].map((report) => report._id.toString());
+    const response = await client.get(`/api/v1/usg-report?patient=${patient._id.toString()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(2);
+
+    response.body.forEach((usgReport) => {
+      expect(usgReportIds).toContain(usgReport.id);
+    });
+  });
+
+  it("get all USGReports with filter by referrer", async () => {
+    const referrer = await doctorFactory.makeDoctor();
+    const usgReports = await Promise.all([
+      usgReportFactory.makeUSGReport({ referrer: referrer._id }),
+      usgReportFactory.makeUSGReport({ referrer: referrer._id }),
+      usgReportFactory.makeUSGReport(),
+    ]);
+
+    const usgReportIds = [usgReports[0], usgReports[1]].map((report) => report._id.toString());
+    const response = await client.get(`/api/v1/usg-report?referrer=${referrer._id.toString()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(2);
+
+    response.body.forEach((usgReport) => {
+      expect(usgReportIds).toContain(usgReport.id);
+    });
+  });
+
+  it("get all USGReports with filter by sonologist", async () => {
+    const sonologist = await doctorFactory.makeDoctor();
+    const usgReports = await Promise.all([
+      usgReportFactory.makeUSGReport({ sonologist: sonologist._id }),
+      usgReportFactory.makeUSGReport({ sonologist: sonologist._id }),
+      usgReportFactory.makeUSGReport(),
+    ]);
+
+    const usgReportIds = [usgReports[0], usgReports[1]].map((report) => report._id.toString());
+    const response = await client.get(`/api/v1/usg-report?sonologist=${sonologist._id.toString()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(2);
+
+    response.body.forEach((usgReport) => {
+      expect(usgReportIds).toContain(usgReport.id);
+    });
+  });
+
+  it("get all USGReports with filter by date", async () => {
+    const usgReports = await Promise.all([
+      usgReportFactory.makeUSGReport({ date: "01-01-2020" }),
+      usgReportFactory.makeUSGReport({ date: "01-05-2020" }),
+      usgReportFactory.makeUSGReport({ date: "01-06-2020" }),
+      usgReportFactory.makeUSGReport({ date: "01-13-2020" }),
+      usgReportFactory.makeUSGReport({ date: "01-15-2020" }),
+    ]);
+
+    const usgReportIds = [usgReports[1], usgReports[2], usgReports[3]].map((report) => report._id.toString());
+    const response = await client.get("/api/v1/usg-report?date_before=01-13-2020&date_after=01-05-2020");
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(3);
+
+    response.body.forEach((usgReport) => {
+      expect(usgReportIds).toContain(usgReport.id);
+    });
+  });
+
+  it("get all USGReports with filter by partOfScan", async () => {
+    const usgReports = await Promise.all([
+      usgReportFactory.makeUSGReport({ partOfScan: "Liver" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "LivEr" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "LIver" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "Liverpool" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "Kidney" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "Kidney" }),
+    ]);
+
+    const usgReportIds = usgReports.slice(0, 4).map((report) => report._id.toString());
+    const response = await client.get("/api/v1/usg-report?partOfScan=iver");
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(4);
+
+    response.body.forEach((usgReport) => {
+      expect(usgReportIds).toContain(usgReport.id);
+    });
+  });
+
+  it("get all USGReports with filter by findings", async () => {
+    const usgReports = await Promise.all([
+      usgReportFactory.makeUSGReport({ findings: "Liver" }),
+      usgReportFactory.makeUSGReport({ findings: "LivEr" }),
+      usgReportFactory.makeUSGReport({ findings: "LIver" }),
+      usgReportFactory.makeUSGReport({ findings: "Liverpool" }),
+      usgReportFactory.makeUSGReport({ findings: "Kidney" }),
+      usgReportFactory.makeUSGReport({ findings: "Kidney" }),
+    ]);
+
+    const usgReportIds = usgReports.slice(0, 4).map((report) => report._id.toString());
+    const response = await client.get("/api/v1/usg-report?findings=iver");
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(4);
+
+    response.body.forEach((usgReport) => {
+      expect(usgReportIds).toContain(usgReport.id);
+    });
+  });
+
+  it("get all USGReports with filter by findings, partOfScan and date", async () => {
+    const usgReports = await Promise.all([
+      usgReportFactory.makeUSGReport({ findings: "Liver", partOfScan: "Liver", date: "01-01-2020" }),
+      usgReportFactory.makeUSGReport({ findings: "LivEr", partOfScan: "Liver", date: "01-02-2020" }),
+      usgReportFactory.makeUSGReport({ findings: "LIver", partOfScan: "Liver", date: "01-03-2020" }),
+      usgReportFactory.makeUSGReport({ findings: "Liverpool", partOfScan: "LiVer", date: "01-04-2020" }),
+      usgReportFactory.makeUSGReport({ findings: "Kidney", partOfScan: "Liver", date: "01-05-2020" }),
+      usgReportFactory.makeUSGReport({ findings: "Kidney", partOfScan: "Kidney", date: "01-06-2020" }),
+    ]);
+
+    const usgReportIds = usgReports.slice(1, 3).map((report) => report._id.toString());
+    const query = {
+      findings: "iver",
+      partOfScan: "iver",
+      date_before: "01-03-2020",
+      date_after: "01-02-2020",
+    };
+
+    const response = await client.get(`/api/v1/usg-report?${new URLSearchParams(query).toString()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(usgReportIds.length);
+
+    response.body.forEach((usgReport) => {
+      expect(usgReportIds).toContain(usgReport.id);
+    });
+  });
+
+  it("get all USGReports with filter by findings, partOfScan, date and sonologist", async () => {
+    const sonologist = await doctorFactory.makeDoctor();
+    const usgReports = await Promise.all([
+      usgReportFactory.makeUSGReport({
+        findings: "Liver",
+        partOfScan: "Liver",
+        date: "01-01-2020",
+        sonologist: sonologist._id,
+      }),
+      usgReportFactory.makeUSGReport({
+        findings: "LivEr",
+        partOfScan: "Liver",
+        date: "01-02-2020",
+        sonologist: sonologist._id,
+      }),
+      usgReportFactory.makeUSGReport({
+        findings: "LIver",
+        partOfScan: "Liver",
+        date: "01-03-2020",
+        sonologist: sonologist._id,
+      }),
+      usgReportFactory.makeUSGReport({
+        findings: "Liverpool",
+        partOfScan: "LiVer",
+        date: "01-04-2020",
+        sonologist: sonologist._id,
+      }),
+      usgReportFactory.makeUSGReport({
+        findings: "Kidney",
+        partOfScan: "Liver",
+        date: "01-05-2020",
+        sonologist: sonologist._id,
+      }),
+      usgReportFactory.makeUSGReport({
+        findings: "Kidney",
+        partOfScan: "Kidney",
+        date: "01-06-2020",
+        sonologist: sonologist._id,
+      }),
+    ]);
+
+    const usgReportIds = usgReports.slice(1, 3).map((report) => report._id.toString());
+
+    const query = {
+      findings: "iver",
+      partOfScan: "iver",
+      date_before: "01-03-2020",
+      date_after: "01-02-2020",
+      sonologist: sonologist._id.toString(),
+    };
+    const response = await client.get(`/api/v1/usg-report?${new URLSearchParams(query).toString()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(usgReportIds.length);
+    response.body.forEach((usgReport) => {
+      expect(usgReportIds).toContain(usgReport.id);
+    });
   });
 });

@@ -5,19 +5,19 @@ const USGReport = require("../models/USGReport");
 const { makeDoctor } = require("./Doctor");
 const { makePatient } = require("./Patient");
 
-const makeUSGReport = async (
-  patientId = null,
-  referrerId = null,
+const makeUSGReport = async ({
+  patient = null,
+  referrer = null,
   date = null,
-  sonologistId = null,
+  sonologist = null,
   partOfScan = null,
   findings = null,
-) => {
+} = {}) => {
   const usgReport = await USGReport.create({
-    patient: patientId || (await makePatient())._id,
-    referrer: referrerId || (await makeDoctor())._id,
+    patient: patient || (await makePatient())._id,
+    referrer: referrer || (await makeDoctor())._id,
     date: date || faker.date.future(),
-    sonologist: sonologistId || (await makeDoctor())._id,
+    sonologist: sonologist || (await makeDoctor())._id,
     partOfScan: partOfScan || faker.random.word(),
     findings: findings || faker.random.words(20),
   });
