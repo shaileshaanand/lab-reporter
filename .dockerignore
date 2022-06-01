@@ -6,3 +6,7 @@ Dockerfile.*
 .gitmodules
 node_modules
 .git
+.npmrc
+coverage
+.env*
+.vscode
