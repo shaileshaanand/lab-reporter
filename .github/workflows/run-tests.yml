@@ -1,0 +1,14 @@
+name: Lab Reporter Tests
+
+on:
+  push:
+    branches: [ "master" ,"testci"]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: docker-compose run --rm be sh -c "npm ci && npm run test -- --coverage && npm run lint"
