@@ -5,8 +5,9 @@ const morgan = require("morgan");
 
 require("express-async-errors");
 
+const authenticationMiddleware = require("./middleware/authentication");
 const errorHandlerMiddleware = require("./middleware/errorHandler");
-const { doctorRouter, patientRouter, usgReportRouter } = require("./routes");
+const { doctorRouter, patientRouter, usgReportRouter, userRouter, authRouter } = require("./routes");
 
 const app = express();
 
@@ -19,9 +20,11 @@ if (process.env.NODE_ENV === "development") {
 }
 app.use(express.json());
 
-app.use("/api/v1/doctor", doctorRouter);
-app.use("/api/v1/patient", patientRouter);
-app.use("/api/v1/usg-report", usgReportRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/doctor", authenticationMiddleware, doctorRouter);
+app.use("/api/v1/patient", authenticationMiddleware, patientRouter);
+app.use("/api/v1/usg-report", authenticationMiddleware, usgReportRouter);
+app.use("/api/v1/user", authenticationMiddleware, userRouter);
 
 app.use(errorHandlerMiddleware);
 module.exports = app;

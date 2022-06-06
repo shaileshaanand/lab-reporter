@@ -2,7 +2,7 @@ const { faker } = require("@faker-js/faker");
 const supertest = require("supertest");
 
 const app = require("../app");
-const { doctorFactory } = require("../factories");
+const { doctorFactory, userFactory } = require("../factories");
 const { Doctor } = require("../models");
 
 require("dotenv").config();
@@ -10,11 +10,17 @@ require("dotenv").config();
 const client = supertest(app);
 const { connectTestDb, disconnectTestDb, clearDb } = require("./helpers");
 
+let token;
+
 describe("Doctor", () => {
   beforeAll(connectTestDb);
   afterAll(disconnectTestDb);
 
-  beforeEach(clearDb);
+  beforeEach(async () => {
+    clearDb();
+    const user = await userFactory.makeUser();
+    token = `Bearer ${user.issueToken()}`;
+  });
 
   it("create a new Doctor", async () => {
     const doctor = {
@@ -23,7 +29,7 @@ describe("Doctor", () => {
       email: faker.internet.email(),
     };
 
-    const response = await client.post("/api/v1/doctor").send(doctor);
+    const response = await client.post("/api/v1/doctor").set("Authorization", token).send(doctor);
 
     expect(response.status).toBe(201);
     expect(response.body.id).toBeDefined();
@@ -41,7 +47,7 @@ describe("Doctor", () => {
       email: "invalid-email",
     };
 
-    const response = await client.post("/api/v1/doctor").send(doctor);
+    const response = await client.post("/api/v1/doctor").set("Authorization", token).send(doctor);
 
     expect(response.status).toBe(400);
   });
@@ -53,7 +59,7 @@ describe("Doctor", () => {
       email: faker.internet.email(),
     };
 
-    const response = await client.post("/api/v1/doctor").send(doctor);
+    const response = await client.post("/api/v1/doctor").set("Authorization", token).send(doctor);
 
     expect(response.status).toBe(400);
   });
@@ -63,7 +69,7 @@ describe("Doctor", () => {
     const doctor2 = await doctorFactory.makeDoctor();
     const doctor3 = await doctorFactory.makeDoctor();
     const doctorIds = [doctor1.id, doctor2.id, doctor3.id];
-    const response = await client.get("/api/v1/doctor");
+    const response = await client.get("/api/v1/doctor").set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(3);
@@ -78,7 +84,7 @@ describe("Doctor", () => {
 
   it("get a doctor", async () => {
     const doctor = await doctorFactory.makeDoctor();
-    const response = await client.get(`/api/v1/doctor/${doctor.id}`);
+    const response = await client.get(`/api/v1/doctor/${doctor.id}`).set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe(doctor.id);
@@ -88,7 +94,7 @@ describe("Doctor", () => {
   });
 
   it("fail to get a doctor with invalid id", async () => {
-    const response = await client.get("/api/v1/doctor/invalid-id");
+    const response = await client.get("/api/v1/doctor/invalid-id").set("Authorization", token);
 
     expect(response.status).toBe(404);
   });
@@ -100,7 +106,7 @@ describe("Doctor", () => {
       phone: faker.phone.phoneNumber(),
       email: faker.internet.email(),
     };
-    const response = await client.put(`/api/v1/doctor/${doctor.id}`).send(updatedDoctor);
+    const response = await client.put(`/api/v1/doctor/${doctor.id}`).set("Authorization", token).send(updatedDoctor);
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe(doctor.id);
@@ -111,7 +117,7 @@ describe("Doctor", () => {
 
   it("delete a doctor", async () => {
     const doctor = await doctorFactory.makeDoctor();
-    const response = await client.delete(`/api/v1/doctor/${doctor.id}`);
+    const response = await client.delete(`/api/v1/doctor/${doctor.id}`).set("Authorization", token);
 
     expect(response.status).toBe(204);
     const deletedDoctor = await Doctor.findOne({ _id: doctor.id });
@@ -120,8 +126,8 @@ describe("Doctor", () => {
 
   it("get a deleted doctor", async () => {
     const doctor = await doctorFactory.makeDoctor();
-    await client.delete(`/api/v1/doctor/${doctor.id}`);
-    const response = await client.get(`/api/v1/doctor/${doctor.id}`);
+    await client.delete(`/api/v1/doctor/${doctor.id}`).set("Authorization", token);
+    const response = await client.get(`/api/v1/doctor/${doctor.id}`).set("Authorization", token);
 
     expect(response.status).toBe(404);
   });

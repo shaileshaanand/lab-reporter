@@ -2,7 +2,7 @@ const { faker } = require("@faker-js/faker");
 const supertest = require("supertest");
 
 const app = require("../app");
-const { patientFactory } = require("../factories");
+const { patientFactory, userFactory } = require("../factories");
 // const doctorFactory = require("../factories/ Patient");
 const { Patient } = require("../models");
 
@@ -11,11 +11,17 @@ require("dotenv").config();
 const client = supertest(app);
 const { connectTestDb, disconnectTestDb, clearDb } = require("./helpers");
 
+let token;
+
 describe("Patient", () => {
   beforeAll(connectTestDb);
   afterAll(disconnectTestDb);
 
-  afterEach(clearDb);
+  beforeEach(async () => {
+    clearDb();
+    const user = await userFactory.makeUser();
+    token = `Bearer ${user.issueToken()}`;
+  });
 
   it("create a new Patient", async () => {
     const patient = {
@@ -26,7 +32,7 @@ describe("Patient", () => {
       gender: faker.name.gender(true).toLowerCase(),
     };
 
-    const response = await client.post("/api/v1/patient").send(patient);
+    const response = await client.post("/api/v1/patient").set("Authorization", token).send(patient);
 
     expect(response.status).toBe(201);
     expect(response.body.id).toBeDefined();
@@ -44,7 +50,7 @@ describe("Patient", () => {
     const patient2 = await patientFactory.makePatient();
     const patient3 = await patientFactory.makePatient();
     const patientIds = [patient1.id, patient2.id, patient3.id];
-    const response = await client.get("/api/v1/patient");
+    const response = await client.get("/api/v1/patient").set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(3);
@@ -62,7 +68,7 @@ describe("Patient", () => {
 
   it("get a patient", async () => {
     const patient = await patientFactory.makePatient();
-    const response = await client.get(`/api/v1/patient/${patient.id}`);
+    const response = await client.get(`/api/v1/patient/${patient.id}`).set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe(patient.id);
@@ -83,7 +89,7 @@ describe("Patient", () => {
       age: faker.datatype.number({ min: 0, max: 120 }),
       gender: patient.gender === "female" ? "male" : "female",
     };
-    const response = await client.put(`/api/v1/patient/${patient.id}`).send(updatedPatient);
+    const response = await client.put(`/api/v1/patient/${patient.id}`).set("Authorization", token).send(updatedPatient);
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe(patient.id);
@@ -97,7 +103,7 @@ describe("Patient", () => {
 
   it("delete a patient", async () => {
     const patient = await patientFactory.makePatient();
-    const response = await client.delete(`/api/v1/patient/${patient.id}`);
+    const response = await client.delete(`/api/v1/patient/${patient.id}`).set("Authorization", token);
 
     expect(response.status).toBe(204);
     const deletedPatient = await Patient.findOne({ _id: patient.id });
@@ -106,8 +112,8 @@ describe("Patient", () => {
 
   it("get a deleted patient", async () => {
     const patient = await patientFactory.makePatient();
-    await client.delete(`/api/v1/patient/${patient.id}`);
-    const response = await client.get(`/api/v1/patient/${patient.id}`);
+    await client.delete(`/api/v1/patient/${patient.id}`).set("Authorization", token);
+    const response = await client.get(`/api/v1/patient/${patient.id}`).set("Authorization", token);
 
     expect(response.status).toBe(404);
   });
