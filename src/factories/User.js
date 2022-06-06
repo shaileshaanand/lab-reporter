@@ -1,8 +1,8 @@
-const faker = require("@faker-js/faker");
+const { default: faker } = require("@faker-js/faker");
 
 const User = require("../models/User");
 
-const makeUser = async ({ firstName = null, lastName = null, username = null, password = null }) => {
+const makeUser = async ({ firstName = null, lastName = null, username = null, password = null } = {}) => {
   const user = await User.create({
     firstName: firstName || faker.name.firstName(),
     lastName: lastName || faker.name.lastName(),

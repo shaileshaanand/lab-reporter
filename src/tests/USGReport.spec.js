@@ -4,7 +4,7 @@ const { faker } = require("@faker-js/faker");
 const supertest = require("supertest");
 
 const app = require("../app");
-const { patientFactory, usgReportFactory, doctorFactory } = require("../factories");
+const { patientFactory, usgReportFactory, doctorFactory, userFactory } = require("../factories");
 const { makeDoctor } = require("../factories/Doctor");
 const { makePatient } = require("../factories/Patient");
 const { Patient, Doctor, USGReport } = require("../models");
@@ -14,11 +14,17 @@ require("dotenv").config();
 const client = supertest(app);
 const { connectTestDb, disconnectTestDb, clearDb } = require("./helpers");
 
+let token;
+
 describe("USGReport", () => {
   beforeAll(connectTestDb);
   afterAll(disconnectTestDb);
 
-  afterEach(clearDb);
+  beforeEach(async () => {
+    clearDb();
+    const user = await userFactory.makeUser();
+    token = `Bearer ${user.issueToken()}`;
+  });
 
   it("create a new USGReport", async () => {
     const patient = await makePatient();
@@ -33,7 +39,7 @@ describe("USGReport", () => {
       findings: faker.random.words(20),
     };
 
-    const response = await client.post("/api/v1/usg-report").send(usgReport);
+    const response = await client.post("/api/v1/usg-report").set("Authorization", token).send(usgReport);
 
     expect(response.status).toBe(201);
     expect(response.body.id).toBeDefined();
@@ -52,7 +58,7 @@ describe("USGReport", () => {
     const usgreport2 = await usgReportFactory.makeUSGReport();
     const usgreport3 = await usgReportFactory.makeUSGReport();
     const usgreportIds = [usgreport1.id, usgreport2.id, usgreport3.id];
-    const response = await client.get("/api/v1/usg-report");
+    const response = await client.get("/api/v1/usg-report").set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(3);
@@ -74,7 +80,7 @@ describe("USGReport", () => {
     const referrer = await Doctor.findOne({ _id: usgReport.referrer.id });
     const sonologist = await Doctor.findOne({ _id: usgReport.sonologist.id });
     const patient = await Patient.findOne({ _id: usgReport.patient.id });
-    const response = await client.get(`/api/v1/usg-report/${usgReport.id}`);
+    const response = await client.get(`/api/v1/usg-report/${usgReport.id}`).set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBeDefined();
@@ -118,7 +124,10 @@ describe("USGReport", () => {
       findings: faker.lorem.sentence(),
     };
 
-    const response = await client.put(`/api/v1/usg-report/${usgReport.id}`).send(newDataPayload);
+    const response = await client
+      .put(`/api/v1/usg-report/${usgReport.id}`)
+      .set("Authorization", token)
+      .send(newDataPayload);
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBeDefined();
@@ -149,7 +158,7 @@ describe("USGReport", () => {
 
   it("delete a USGReport", async () => {
     const usgReport = await usgReportFactory.makeUSGReport();
-    const response = await client.delete(`/api/v1/usg-report/${usgReport.id}`);
+    const response = await client.delete(`/api/v1/usg-report/${usgReport.id}`).set("Authorization", token);
 
     expect(response.status).toBe(204);
     const deletedUSGReport = await USGReport.findOne({ _id: usgReport.id });
@@ -160,7 +169,7 @@ describe("USGReport", () => {
     const usgReport = await usgReportFactory.makeUSGReport();
     usgReport.deleted = true;
     await usgReport.save();
-    const response = await client.get(`/api/v1/usg-report/${usgReport.id}`);
+    const response = await client.get(`/api/v1/usg-report/${usgReport.id}`).set("Authorization", token);
 
     expect(response.status).toBe(404);
   });
@@ -169,11 +178,14 @@ describe("USGReport", () => {
     const usgReport = await usgReportFactory.makeUSGReport();
     usgReport.deleted = true;
     await usgReport.save();
-    const response = await client.put(`/api/v1/usg-report/${usgReport.id}`).send({
-      date: faker.date.future(),
-      partOfScan: faker.random.word(),
-      findings: faker.random.words(20),
-    });
+    const response = await client
+      .put(`/api/v1/usg-report/${usgReport.id}`)
+      .set("Authorization", token)
+      .send({
+        date: faker.date.future(),
+        partOfScan: faker.random.word(),
+        findings: faker.random.words(20),
+      });
 
     expect(response.status).toBe(404);
   });
@@ -182,29 +194,32 @@ describe("USGReport", () => {
     const usgReport = await usgReportFactory.makeUSGReport();
     usgReport.deleted = true;
     await usgReport.save();
-    const response = await client.delete(`/api/v1/usg-report/${usgReport.id}`);
+    const response = await client.delete(`/api/v1/usg-report/${usgReport.id}`).set("Authorization", token);
 
     expect(response.status).toBe(404);
   });
 
   it("get a non-existing USGReport", async () => {
-    const response = await client.get(`/api/v1/usg-report/${faker.datatype.uuid()}`);
+    const response = await client.get(`/api/v1/usg-report/${faker.datatype.uuid()}`).set("Authorization", token);
 
     expect(response.status).toBe(404);
   });
 
   it("update a non-existing USGReport", async () => {
-    const response = await client.put(`/api/v1/usg-report/${faker.datatype.uuid()}`).send({
-      date: faker.date.future(),
-      partOfScan: faker.random.word(),
-      findings: faker.random.words(20),
-    });
+    const response = await client
+      .put(`/api/v1/usg-report/${faker.datatype.uuid()}`)
+      .set("Authorization", token)
+      .send({
+        date: faker.date.future(),
+        partOfScan: faker.random.word(),
+        findings: faker.random.words(20),
+      });
 
     expect(response.status).toBe(404);
   });
 
   it("delete a non-existing USGReport", async () => {
-    const response = await client.delete(`/api/v1/usg-report/${faker.datatype.uuid()}`);
+    const response = await client.delete(`/api/v1/usg-report/${faker.datatype.uuid()}`).set("Authorization", token);
 
     expect(response.status).toBe(404);
   });
@@ -218,7 +233,9 @@ describe("USGReport", () => {
     ]);
 
     const usgReportIds = [usgReports[0], usgReports[1]].map((report) => report._id.toString());
-    const response = await client.get(`/api/v1/usg-report?patient=${patient._id.toString()}`);
+    const response = await client
+      .get(`/api/v1/usg-report?patient=${patient._id.toString()}`)
+      .set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(2);
@@ -237,7 +254,9 @@ describe("USGReport", () => {
     ]);
 
     const usgReportIds = [usgReports[0], usgReports[1]].map((report) => report._id.toString());
-    const response = await client.get(`/api/v1/usg-report?referrer=${referrer._id.toString()}`);
+    const response = await client
+      .get(`/api/v1/usg-report?referrer=${referrer._id.toString()}`)
+      .set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(2);
@@ -256,7 +275,9 @@ describe("USGReport", () => {
     ]);
 
     const usgReportIds = [usgReports[0], usgReports[1]].map((report) => report._id.toString());
-    const response = await client.get(`/api/v1/usg-report?sonologist=${sonologist._id.toString()}`);
+    const response = await client
+      .get(`/api/v1/usg-report?sonologist=${sonologist._id.toString()}`)
+      .set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(2);
@@ -276,7 +297,9 @@ describe("USGReport", () => {
     ]);
 
     const usgReportIds = [usgReports[1], usgReports[2], usgReports[3]].map((report) => report._id.toString());
-    const response = await client.get("/api/v1/usg-report?date_before=01-13-2020&date_after=01-05-2020");
+    const response = await client
+      .get("/api/v1/usg-report?date_before=01-13-2020&date_after=01-05-2020")
+      .set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(3);
@@ -297,7 +320,7 @@ describe("USGReport", () => {
     ]);
 
     const usgReportIds = usgReports.slice(0, 4).map((report) => report._id.toString());
-    const response = await client.get("/api/v1/usg-report?partOfScan=iver");
+    const response = await client.get("/api/v1/usg-report?partOfScan=iver").set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(4);
@@ -318,7 +341,7 @@ describe("USGReport", () => {
     ]);
 
     const usgReportIds = usgReports.slice(0, 4).map((report) => report._id.toString());
-    const response = await client.get("/api/v1/usg-report?findings=iver");
+    const response = await client.get("/api/v1/usg-report?findings=iver").set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(4);
@@ -346,7 +369,9 @@ describe("USGReport", () => {
       date_after: "01-02-2020",
     };
 
-    const response = await client.get(`/api/v1/usg-report?${new URLSearchParams(query).toString()}`);
+    const response = await client
+      .get(`/api/v1/usg-report?${new URLSearchParams(query).toString()}`)
+      .set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(usgReportIds.length);
@@ -406,7 +431,9 @@ describe("USGReport", () => {
       date_after: "01-02-2020",
       sonologist: sonologist._id.toString(),
     };
-    const response = await client.get(`/api/v1/usg-report?${new URLSearchParams(query).toString()}`);
+    const response = await client
+      .get(`/api/v1/usg-report?${new URLSearchParams(query).toString()}`)
+      .set("Authorization", token);
 
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(usgReportIds.length);
