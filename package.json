@@ -108,6 +108,7 @@
       "global": {
         "lines": 90
       }
-    }
+    },
+    "testTimeout": 10000
   }
 }
