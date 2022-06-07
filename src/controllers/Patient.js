@@ -21,7 +21,19 @@ const newPatient = async (req, res) => {
 };
 
 const listPatients = async (req, res) => {
-  const patients = await Patient.find({ deleted: false }).lean();
+  const paramsValidator = Joi.object({
+    phone: Joi.string().pattern(/^[6-9]\d{9}$/),
+    name: Joi.string(),
+  });
+  Joi.assert(req.query, paramsValidator);
+  const query = { deleted: false };
+  if (req.query.phone) {
+    query.phone = req.query.phone;
+  }
+  if (req.query.name) {
+    query.name = { $regex: req.query.name, $options: "i" };
+  }
+  const patients = await Patient.find(query).lean();
   res.status(200).json(patients.map((patient) => sanitize(patient)));
 };
 

@@ -80,6 +80,44 @@ describe("Patient", () => {
     });
   });
 
+  it("filter all patients with phone number", async () => {
+    const phone = faker.phone.phoneNumber("9#########");
+    const patients = await Promise.all([
+      patientFactory.makePatient({ phone }),
+      patientFactory.makePatient({ phone }),
+      patientFactory.makePatient({ phone }),
+      patientFactory.makePatient(),
+    ]);
+    const patientIds = patients.slice(0, 3).map((patient) => patient.id);
+    const response = await client.get(`/api/v1/patient?phone=${phone}`).set("Authorization", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(3);
+    response.body.forEach((patient) => {
+      expect(patient.id).toBeDefined();
+      expect(patientIds).toContain(patient.id);
+    });
+  });
+
+  it("filter all patients by name", async () => {
+    const name = "rahul";
+    const patients = await Promise.all([
+      patientFactory.makePatient({ name: "Rahul Kumar" }),
+      patientFactory.makePatient({ name: "Singh Rahul" }),
+      patientFactory.makePatient({ name: "RaHul KUMAR" }),
+      patientFactory.makePatient(),
+    ]);
+    const patientIds = patients.slice(0, 3).map((patient) => patient.id);
+    const response = await client.get(`/api/v1/patient?name=${name}`).set("Authorization", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(3);
+    response.body.forEach((patient) => {
+      expect(patient.id).toBeDefined();
+      expect(patientIds).toContain(patient.id);
+    });
+  });
+
   it("get a patient", async () => {
     const patient = await patientFactory.makePatient();
     const response = await client.get(`/api/v1/patient/${patient.id}`).set("Authorization", token);
