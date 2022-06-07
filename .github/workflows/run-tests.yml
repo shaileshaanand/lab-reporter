@@ -11,4 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - run: docker-compose run --rm be sh -c "npm ci && npm run test -- --coverage && npm run lint"
+    - run: docker-compose run --rm be sh -c "npm ci"
+    - run: docker-compose run --rm be sh -c "npm run test -- --coverage"
+    - run: docker-compose run --rm be sh -c "npm run lint"
