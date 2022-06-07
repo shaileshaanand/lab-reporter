@@ -9,6 +9,12 @@ const DoctorSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true,
+    validate: {
+      validator: function (v) {
+        return /^[6-9]\d{9}$/.test(v);
+      },
+      message: "Phone number must be 10 digits, starting with 6,7,8 or 9",
+    },
   },
   email: {
     type: String,

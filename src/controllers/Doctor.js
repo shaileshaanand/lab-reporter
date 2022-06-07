@@ -4,13 +4,16 @@ const NotFoundError = require("../errors/not-found");
 const { sanitize } = require("../helpers/utils");
 const { Doctor } = require("../models");
 
+const doctorBodyValidator = Joi.object({
+  name: Joi.string().required(),
+  phone: Joi.string()
+    .pattern(/^[6-9]\d{9}$/)
+    .required(),
+  email: Joi.string().email(),
+});
+
 const newDoctor = async (req, res) => {
-  const bodyValidator = Joi.object({
-    name: Joi.string().required(),
-    phone: Joi.string().required(),
-    email: Joi.string().email(),
-  });
-  Joi.assert(req.body, bodyValidator);
+  Joi.assert(req.body, doctorBodyValidator);
   const doctor = await Doctor.create(req.body);
   res.status(201).json(sanitize(doctor.toObject()));
 };
@@ -29,12 +32,7 @@ const getDoctor = async (req, res) => {
 };
 
 const updateDoctor = async (req, res) => {
-  const bodyValidator = Joi.object({
-    name: Joi.string(),
-    phone: Joi.string(),
-    email: Joi.string().email(),
-  });
-  Joi.assert(req.body, bodyValidator);
+  Joi.assert(req.body, doctorBodyValidator);
   const doctor = await Doctor.findOneAndUpdate({ _id: req.params.id, deleted: false }, req.body, {
     new: true,
   }).lean();

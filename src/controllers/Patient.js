@@ -4,15 +4,18 @@ const { NotFoundError } = require("../errors");
 const { sanitize } = require("../helpers/utils");
 const { Patient } = require("../models");
 
+const patientBodyValidator = Joi.object({
+  name: Joi.string().required(),
+  phone: Joi.string()
+    .pattern(/^[6-9]\d{9}$/)
+    .required(),
+  email: Joi.string().email(),
+  age: Joi.number().min(0).max(120),
+  gender: Joi.string().valid("male", "female"),
+});
+
 const newPatient = async (req, res) => {
-  const bodyValidator = Joi.object({
-    name: Joi.string().required(),
-    phone: Joi.string().required(),
-    email: Joi.string().email(),
-    age: Joi.number().min(0).max(120),
-    gender: Joi.string().valid("male", "female"),
-  });
-  Joi.assert(req.body, bodyValidator);
+  Joi.assert(req.body, patientBodyValidator);
   const patient = await Patient.create(req.body);
   res.status(201).json(sanitize(patient.toObject()));
 };
@@ -28,14 +31,7 @@ const deletePatient = async (req, res) => {
 };
 
 const updatePatient = async (req, res) => {
-  const bodyValidator = Joi.object({
-    name: Joi.string(),
-    phone: Joi.string(),
-    email: Joi.string().email(),
-    age: Joi.number().min(0).max(120),
-    gender: Joi.string().valid("male", "female"),
-  });
-  Joi.assert(req.body, bodyValidator);
+  Joi.assert(req.body, patientBodyValidator);
   const patient = await Patient.findOneAndUpdate({ _id: req.params.id, deleted: false }, req.body, {
     new: true,
   }).lean();

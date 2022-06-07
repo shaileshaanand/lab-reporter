@@ -1,4 +1,5 @@
 const { faker } = require("@faker-js/faker");
+const { StatusCodes } = require("http-status-codes");
 const supertest = require("supertest");
 
 const app = require("../app");
@@ -25,7 +26,7 @@ describe("Doctor", () => {
   it("create a new Doctor", async () => {
     const doctor = {
       name: faker.name.firstName(),
-      phone: faker.phone.phoneNumber(),
+      phone: faker.phone.phoneNumber("9#########"),
       email: faker.internet.email(),
     };
 
@@ -43,7 +44,7 @@ describe("Doctor", () => {
   it("fail to craete doctor with invalid email", async () => {
     const doctor = {
       name: faker.name.firstName(),
-      phone: faker.phone.phoneNumber(),
+      phone: faker.phone.phoneNumber("9#########"),
       email: "invalid-email",
     };
 
@@ -55,13 +56,25 @@ describe("Doctor", () => {
   it("fail to craete doctor with long name", async () => {
     const doctor = {
       name: faker.lorem.words(100),
-      phone: faker.phone.phoneNumber(),
+      phone: faker.phone.phoneNumber("9#########"),
       email: faker.internet.email(),
     };
 
     const response = await client.post("/api/v1/doctor").set("Authorization", token).send(doctor);
 
     expect(response.status).toBe(400);
+  });
+
+  it("fail to craete doctor with invalid phone", async () => {
+    const doctor = {
+      name: faker.name.firstName(),
+      phone: faker.phone.phoneNumber("3#########"),
+      email: faker.internet.email(),
+    };
+
+    const response = await client.post("/api/v1/doctor").set("Authorization", token).send(doctor);
+
+    expect(response.status).toBe(StatusCodes.BAD_REQUEST);
   });
 
   it("list all doctors", async () => {
@@ -103,7 +116,7 @@ describe("Doctor", () => {
     const doctor = await doctorFactory.makeDoctor();
     const updatedDoctor = {
       name: faker.name.firstName(),
-      phone: faker.phone.phoneNumber(),
+      phone: faker.phone.phoneNumber("9#########"),
       email: faker.internet.email(),
     };
     const response = await client.put(`/api/v1/doctor/${doctor.id}`).set("Authorization", token).send(updatedDoctor);

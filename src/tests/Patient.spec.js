@@ -1,4 +1,5 @@
 const { faker } = require("@faker-js/faker");
+const { StatusCodes } = require("http-status-codes");
 const supertest = require("supertest");
 
 const app = require("../app");
@@ -26,7 +27,7 @@ describe("Patient", () => {
   it("create a new Patient", async () => {
     const patient = {
       name: faker.name.firstName(),
-      phone: faker.phone.phoneNumber(),
+      phone: faker.phone.phoneNumber("9#########"),
       email: faker.internet.email(),
       age: faker.datatype.number({ min: 0, max: 120 }),
       gender: faker.name.gender(true).toLowerCase(),
@@ -43,6 +44,19 @@ describe("Patient", () => {
     expect(createdPatient.age).toBe(patient.age);
     expect(createdPatient.gender).toBe(patient.gender);
     expect(createdPatient.deleted).toBe(false);
+  });
+
+  it("should not create patient with invalid phone number", async () => {
+    const patient = {
+      name: faker.name.firstName(),
+      phone: faker.phone.phoneNumber("3#########"),
+      email: faker.internet.email(),
+      age: faker.datatype.number({ min: 0, max: 120 }),
+      gender: faker.name.gender(true).toLowerCase(),
+    };
+    const response = await client.post("/api/v1/patient").set("Authorization", token).send(patient);
+    expect(response.status).toBe(StatusCodes.BAD_REQUEST);
+    expect((await Patient.find({})).length).toBe(0);
   });
 
   it("list all patients", async () => {
@@ -84,7 +98,7 @@ describe("Patient", () => {
     const patient = await patientFactory.makePatient();
     const updatedPatient = {
       name: faker.name.firstName(),
-      phone: faker.phone.phoneNumber(),
+      phone: faker.phone.phoneNumber("9#########"),
       email: faker.internet.email(),
       age: faker.datatype.number({ min: 0, max: 120 }),
       gender: patient.gender === "female" ? "male" : "female",
