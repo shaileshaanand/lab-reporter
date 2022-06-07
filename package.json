@@ -11,7 +11,8 @@
     "test:debug:watch": "cross-env NODE_ENV=test node --inspect=0.0.0.0 --inspect-brk ./node_modules/.bin/jest --watch --no-cache --runInBand",
     "test:debug": "cross-env NODE_ENV=test node --inspect=0.0.0.0 --inspect-brk ./node_modules/.bin/jest --no-cache --runInBand",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "createuser": "node bin/createuser"
   },
   "keywords": [],
   "author": "",
@@ -29,7 +30,8 @@
     "joi": "^17.6.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.3.1",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "readline-sync": "^1.4.10"
   },
   "devDependencies": {
     "@faker-js/faker": "^6.2.0",

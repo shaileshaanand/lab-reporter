@@ -1,0 +1,39 @@
+#!/usr/bin/env node
+/* eslint-disable no-console */
+require("dotenv").config();
+const { default: mongoose } = require("mongoose");
+const readlineSync = require("readline-sync");
+
+const dbConnect = require("../src/helpers/dbConnect");
+const { User } = require("../src/models");
+
+const createUser = async () => {
+  const [firstName, lastName] = await readlineSync.question("Enter Full Name: ").split(" ");
+  const username = await readlineSync.question("Enter username: ");
+  const password = await readlineSync.questionNewPassword("Enter password: ", { min: 6 });
+
+  const user = await User.create({
+    firstName,
+    lastName,
+    username,
+    password,
+  });
+
+  console.log("User created");
+  return user;
+};
+
+const main = async () => {
+  const mongo_uri = process.env.MONGO_URI;
+  await dbConnect(mongo_uri);
+  console.log(`Connected to MongoDB at ${mongo_uri}`);
+
+  await createUser();
+
+  await mongoose.connection.close();
+};
+
+if (require.main === module) {
+  main();
+}
+module.exports = createUser;
