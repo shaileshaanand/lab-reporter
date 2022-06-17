@@ -19,7 +19,9 @@ const login = async (req, res) => {
     throw new UnauthenticatedError("Invalid password");
   }
   const token = user.issueToken();
-  res.json({ token, user: sanitize(user.toObject()) });
+  var userObject = sanitize(user.toObject());
+  delete userObject.password;
+  res.json({ token, user: userObject });
 };
 
 module.exports = { login };

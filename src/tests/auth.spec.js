@@ -28,6 +28,10 @@ describe("Authentication", () => {
     expect(response.body.token).toBeDefined();
     expect(jwt.verify(response.body.token, process.env.JWT_SECRET)).toBeTruthy();
     expect(response.body.user.id).toBe(user.id);
+    expect(response.body.user.username).toBe(user.username);
+    expect(response.body.user.firstName).toBe(user.firstName);
+    expect(response.body.user.lastName).toBe(user.lastName);
+    expect(response.body.user.password).toBeUndefined();
   });
 
   it("should not login a user with invalid password", async () => {
