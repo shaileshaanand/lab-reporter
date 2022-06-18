@@ -13,4 +13,10 @@ const sanitize = (obj) => {
   return obj;
 };
 
-module.exports = { sanitize };
+const omit = (obj) => {
+  const missing = [null, undefined, ""];
+  // eslint-disable-next-line no-unused-vars
+  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => !missing.includes(v)));
+};
+
+module.exports = { sanitize, omit };

@@ -89,8 +89,8 @@ describe("Patient", () => {
     const response = await client.get("/api/v1/patient").set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(3);
-    response.body.forEach((patient) => {
+    expect(response.body.data.length).toBe(3);
+    response.body.data.forEach((patient) => {
       expect(patient.id).toBeDefined();
       expect(patientIds).toContain(patient.id);
       expect(patient.name).toBeDefined();
@@ -100,6 +100,48 @@ describe("Patient", () => {
       expect(patient.gender).toBeDefined();
       expect(patient.deleted).toBeUndefined();
     });
+  });
+
+  it("list all patients with first page and order", async () => {
+    await patientFactory.makePatient();
+    const patient2 = await patientFactory.makePatient();
+    const patient3 = await patientFactory.makePatient();
+    const patient4 = await patientFactory.makePatient();
+    const response = await client.get("/api/v1/patient?limit=3").set("Authorization", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.length).toBe(3);
+    expect(response.body.hasMore).toBe(true);
+    expect(response.body.data[0].id).toBe(patient4.id);
+    expect(response.body.data[1].id).toBe(patient3.id);
+    expect(response.body.data[2].id).toBe(patient2.id);
+  });
+
+  it("list all patients with last page and order", async () => {
+    const patient1 = await patientFactory.makePatient();
+    await patientFactory.makePatient();
+    await patientFactory.makePatient();
+    await patientFactory.makePatient();
+    const response = await client.get("/api/v1/patient?limit=3&page=2").set("Authorization", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.length).toBe(1);
+    expect(response.body.hasMore).toBe(false);
+    expect(response.body.data[0].id).toBe(patient1.id);
+  });
+
+  it("list all patients with page and order", async () => {
+    const patient1 = await patientFactory.makePatient();
+    const patient2 = await patientFactory.makePatient();
+    await patientFactory.makePatient();
+    await patientFactory.makePatient();
+    const response = await client.get("/api/v1/patient?limit=2&page=2").set("Authorization", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.length).toBe(2);
+    expect(response.body.hasMore).toBe(false);
+    expect(response.body.data[0].id).toBe(patient2.id);
+    expect(response.body.data[1].id).toBe(patient1.id);
   });
 
   it("filter all patients with phone number", async () => {
@@ -114,8 +156,8 @@ describe("Patient", () => {
     const response = await client.get(`/api/v1/patient?phone=${phone}`).set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(3);
-    response.body.forEach((patient) => {
+    expect(response.body.data.length).toBe(3);
+    response.body.data.forEach((patient) => {
       expect(patient.id).toBeDefined();
       expect(patientIds).toContain(patient.id);
     });
@@ -133,8 +175,8 @@ describe("Patient", () => {
     const response = await client.get(`/api/v1/patient?name=${name}`).set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(3);
-    response.body.forEach((patient) => {
+    expect(response.body.data.length).toBe(3);
+    response.body.data.forEach((patient) => {
       expect(patient.id).toBeDefined();
       expect(patientIds).toContain(patient.id);
     });
