@@ -61,8 +61,8 @@ describe("USGReport", () => {
     const response = await client.get("/api/v1/usg-report").set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(3);
-    response.body.forEach((usgReport) => {
+    expect(response.body.data.length).toBe(3);
+    response.body.data.forEach((usgReport) => {
       expect(usgReport.id).toBeDefined();
       expect(usgreportIds).toContain(usgReport.id);
       expect(usgReport.patient.id).toBeDefined();
@@ -73,6 +73,48 @@ describe("USGReport", () => {
       expect(usgReport.findings).toBeDefined();
       expect(usgReport.deleted).toBeUndefined();
     });
+  });
+
+  it("list all USGReports with first page and order", async () => {
+    await usgReportFactory.makeUSGReport();
+    const usgReport2 = await usgReportFactory.makeUSGReport();
+    const usgReport3 = await usgReportFactory.makeUSGReport();
+    const usgReport4 = await usgReportFactory.makeUSGReport();
+    const response = await client.get("/api/v1/usg-report?limit=3").set("Authorization", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.length).toBe(3);
+    expect(response.body.hasMore).toBe(true);
+    expect(response.body.data[0].id).toBe(usgReport4.id);
+    expect(response.body.data[1].id).toBe(usgReport3.id);
+    expect(response.body.data[2].id).toBe(usgReport2.id);
+  });
+
+  it("list all USGReports with last page and order", async () => {
+    const usgReport1 = await usgReportFactory.makeUSGReport();
+    await usgReportFactory.makeUSGReport();
+    await usgReportFactory.makeUSGReport();
+    await usgReportFactory.makeUSGReport();
+    const response = await client.get("/api/v1/usg-report?limit=3&page=2").set("Authorization", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.length).toBe(1);
+    expect(response.body.hasMore).toBe(false);
+    expect(response.body.data[0].id).toBe(usgReport1.id);
+  });
+
+  it("list all USGReports with page and order", async () => {
+    const usgReport1 = await usgReportFactory.makeUSGReport();
+    const usgReport2 = await usgReportFactory.makeUSGReport();
+    await usgReportFactory.makeUSGReport();
+    await usgReportFactory.makeUSGReport();
+    const response = await client.get("/api/v1/usg-report?limit=2&page=2").set("Authorization", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.length).toBe(2);
+    expect(response.body.hasMore).toBe(false);
+    expect(response.body.data[0].id).toBe(usgReport2.id);
+    expect(response.body.data[1].id).toBe(usgReport1.id);
   });
 
   it("get a USGReport", async () => {
@@ -238,9 +280,9 @@ describe("USGReport", () => {
       .set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(2);
+    expect(response.body.data.length).toBe(2);
 
-    response.body.forEach((usgReport) => {
+    response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });
   });
@@ -259,9 +301,9 @@ describe("USGReport", () => {
       .set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(2);
+    expect(response.body.data.length).toBe(2);
 
-    response.body.forEach((usgReport) => {
+    response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });
   });
@@ -280,9 +322,9 @@ describe("USGReport", () => {
       .set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(2);
+    expect(response.body.data.length).toBe(2);
 
-    response.body.forEach((usgReport) => {
+    response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });
   });
@@ -302,9 +344,9 @@ describe("USGReport", () => {
       .set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(3);
+    expect(response.body.data.length).toBe(3);
 
-    response.body.forEach((usgReport) => {
+    response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });
   });
@@ -323,9 +365,9 @@ describe("USGReport", () => {
     const response = await client.get("/api/v1/usg-report?partOfScan=iver").set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(4);
+    expect(response.body.data.length).toBe(4);
 
-    response.body.forEach((usgReport) => {
+    response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });
   });
@@ -344,9 +386,9 @@ describe("USGReport", () => {
     const response = await client.get("/api/v1/usg-report?findings=iver").set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(4);
+    expect(response.body.data.length).toBe(4);
 
-    response.body.forEach((usgReport) => {
+    response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });
   });
@@ -374,9 +416,9 @@ describe("USGReport", () => {
       .set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(usgReportIds.length);
+    expect(response.body.data.length).toBe(usgReportIds.length);
 
-    response.body.forEach((usgReport) => {
+    response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });
   });
@@ -436,8 +478,8 @@ describe("USGReport", () => {
       .set("Authorization", token);
 
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(usgReportIds.length);
-    response.body.forEach((usgReport) => {
+    expect(response.body.data.length).toBe(usgReportIds.length);
+    response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });
   });

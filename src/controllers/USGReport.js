@@ -1,5 +1,6 @@
 const Joi = require("joi");
 
+const { MAX_PAGE_SIZE, PAGE_SIZE } = require("../config/constants");
 const { NotFoundError } = require("../errors");
 const { sanitize } = require("../helpers/utils");
 const { USGReport } = require("../models");
@@ -71,8 +72,14 @@ const listUSGReports = async (req, res) => {
     date_before: Joi.date(),
     date_after: Joi.date(),
     findings: Joi.string(),
+    page: Joi.number().min(1),
+    limit: Joi.number().min(1).max(MAX_PAGE_SIZE),
   });
   Joi.assert(req.query, paramsValidator);
+
+  const page = parseInt(req.query.page || 1);
+  const limit = parseInt(req.query.limit || PAGE_SIZE);
+
   const query = { deleted: false, date: {} };
   if (req.query.patient) {
     query.patient = req.query.patient;
@@ -98,8 +105,18 @@ const listUSGReports = async (req, res) => {
   if (Object.keys(query.date).length === 0) {
     delete query.date;
   }
-  const usgReports = await USGReport.find(query).populate(["patient", "referrer", "sonologist"]);
-  res.send(usgReports.map((usgReport) => sanitize(usgReport.toObject())));
+  const usgReports = await USGReport.find(query)
+    .sort({ createdAt: "desc" })
+    .skip((page - 1) * limit)
+    .limit(limit + 1)
+    .populate(["patient", "referrer", "sonologist"])
+    .lean();
+  let hasMore = false;
+  if (usgReports.length === limit + 1) {
+    hasMore = true;
+    usgReports.pop();
+  }
+  res.send({ data: usgReports.map((usgReport) => sanitize(usgReport)), hasMore, page, limit });
 };
 
 module.exports = {
