@@ -85,6 +85,7 @@ describe("USGReport", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBe(3);
     expect(response.body.hasMore).toBe(true);
+    expect(response.body.totalPages).toBe(2);
     expect(response.body.data[0].id).toBe(usgReport4.id);
     expect(response.body.data[1].id).toBe(usgReport3.id);
     expect(response.body.data[2].id).toBe(usgReport2.id);
@@ -99,6 +100,7 @@ describe("USGReport", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBe(1);
+    expect(response.body.totalPages).toBe(2);
     expect(response.body.hasMore).toBe(false);
     expect(response.body.data[0].id).toBe(usgReport1.id);
   });
@@ -112,6 +114,7 @@ describe("USGReport", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBe(2);
+    expect(response.body.totalPages).toBe(2);
     expect(response.body.hasMore).toBe(false);
     expect(response.body.data[0].id).toBe(usgReport2.id);
     expect(response.body.data[1].id).toBe(usgReport1.id);

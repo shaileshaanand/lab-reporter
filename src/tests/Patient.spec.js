@@ -111,6 +111,7 @@ describe("Patient", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBe(3);
+    expect(response.body.totalPages).toBe(2);
     expect(response.body.hasMore).toBe(true);
     expect(response.body.data[0].id).toBe(patient4.id);
     expect(response.body.data[1].id).toBe(patient3.id);
@@ -126,6 +127,7 @@ describe("Patient", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBe(1);
+    expect(response.body.totalPages).toBe(2);
     expect(response.body.hasMore).toBe(false);
     expect(response.body.data[0].id).toBe(patient1.id);
   });
@@ -139,6 +141,7 @@ describe("Patient", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBe(2);
+    expect(response.body.totalPages).toBe(2);
     expect(response.body.hasMore).toBe(false);
     expect(response.body.data[0].id).toBe(patient2.id);
     expect(response.body.data[1].id).toBe(patient1.id);
