@@ -59,6 +59,28 @@ describe("Patient", () => {
     expect((await Patient.find({})).length).toBe(0);
   });
 
+  it("should create patient without email", async () => {
+    const patient = {
+      name: faker.name.firstName(),
+      phone: faker.phone.phoneNumber("9#########"),
+      age: faker.datatype.number({ min: 0, max: 120 }),
+      gender: faker.name.gender(true).toLowerCase(),
+    };
+
+    const response = await client.post("/api/v1/patient").set("Authorization", token).send(patient);
+
+    expect(response.status).toBe(201);
+    expect(response.body.id).toBeDefined();
+    const createdPatient = await Patient.findOne({ _id: response.body.id });
+
+    expect(createdPatient.name).toBe(patient.name);
+    expect(createdPatient.phone).toBe(patient.phone);
+    expect(createdPatient.email).toBeUndefined();
+    expect(createdPatient.age).toBe(patient.age);
+    expect(createdPatient.gender).toBe(patient.gender);
+    expect(createdPatient.deleted).toBe(false);
+  });
+
   it("list all patients", async () => {
     const patient1 = await patientFactory.makePatient();
     const patient2 = await patientFactory.makePatient();
