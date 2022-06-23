@@ -9,7 +9,6 @@ const makeUSGReport = async ({
   patient = null,
   referrer = null,
   date = null,
-  sonologist = null,
   partOfScan = null,
   findings = null,
 } = {}) => {
@@ -17,7 +16,6 @@ const makeUSGReport = async ({
     patient: patient || (await makePatient())._id,
     referrer: referrer || (await makeDoctor())._id,
     date: date || faker.date.future(),
-    sonologist: sonologist || (await makeDoctor())._id,
     partOfScan: partOfScan || faker.random.word(),
     findings: findings || faker.random.words(20),
   });

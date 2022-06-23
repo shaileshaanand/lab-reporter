@@ -29,12 +29,10 @@ describe("USGReport", () => {
   it("create a new USGReport", async () => {
     const patient = await makePatient();
     const referrer = await makeDoctor();
-    const sonologist = await makeDoctor();
     const usgReport = {
       patient: patient.id,
       referrer: referrer.id,
       date: faker.date.future(),
-      sonologist: sonologist.id,
       partOfScan: faker.random.word(),
       findings: faker.random.words(20),
     };
@@ -47,7 +45,6 @@ describe("USGReport", () => {
     expect(createdUSGReport.patient._id.toString()).toBe(patient._id.toString());
     expect(createdUSGReport.referrer._id.toString()).toBe(referrer._id.toString());
     expect(createdUSGReport.date.toISOString()).toBe(usgReport.date.toISOString());
-    expect(createdUSGReport.sonologist._id.toString()).toBe(sonologist._id.toString());
     expect(createdUSGReport.partOfScan).toBe(usgReport.partOfScan);
     expect(createdUSGReport.findings).toBe(usgReport.findings);
     expect(createdUSGReport.deleted).toBe(false);
@@ -68,7 +65,6 @@ describe("USGReport", () => {
       expect(usgReport.patient.id).toBeDefined();
       expect(usgReport.referrer.id).toBeDefined();
       expect(usgReport.date).toBeDefined();
-      expect(usgReport.sonologist.id).toBeDefined();
       expect(usgReport.partOfScan).toBeDefined();
       expect(usgReport.findings).toBeDefined();
       expect(usgReport.deleted).toBeUndefined();
@@ -123,7 +119,6 @@ describe("USGReport", () => {
   it("get a USGReport", async () => {
     const usgReport = await usgReportFactory.makeUSGReport();
     const referrer = await Doctor.findOne({ _id: usgReport.referrer.id });
-    const sonologist = await Doctor.findOne({ _id: usgReport.sonologist.id });
     const patient = await Patient.findOne({ _id: usgReport.patient.id });
     const response = await client.get(`/api/v1/usg-report/${usgReport.id}`).set("Authorization", token);
 
@@ -143,11 +138,6 @@ describe("USGReport", () => {
     expect(response.body.referrer.email).toBe(referrer.email);
     expect(response.body.referrer.deleted).toBeUndefined();
     expect(response.body.date).toBe(usgReport.date.toISOString());
-    expect(response.body.sonologist.id).toBe(sonologist._id.toString());
-    expect(response.body.sonologist.name).toBe(sonologist.name);
-    expect(response.body.sonologist.phone).toBe(sonologist.phone);
-    expect(response.body.sonologist.email).toBe(sonologist.email);
-    expect(response.body.sonologist.deleted).toBeUndefined();
     expect(response.body.partOfScan).toBe(usgReport.partOfScan);
     expect(response.body.findings).toBe(usgReport.findings);
     expect(response.body.deleted).toBeUndefined();
@@ -158,12 +148,10 @@ describe("USGReport", () => {
     const oldPatient = await Patient.findOne({ _id: usgReport.patient.id });
     const newPatient = await patientFactory.makePatient();
     const newReferrer = await doctorFactory.makeDoctor();
-    const newSonologist = await doctorFactory.makeDoctor();
 
     const newDataPayload = {
       patient: newPatient._id,
       referrer: newReferrer._id,
-      sonologist: newSonologist._id,
       date: faker.date.future(),
       partOfScan: faker.lorem.word(),
       findings: faker.lorem.sentence(),
@@ -191,11 +179,6 @@ describe("USGReport", () => {
     expect(response.body.referrer.email).toBe(newReferrer.email);
     expect(response.body.referrer.deleted).toBeUndefined();
     expect(response.body.date).toBe(newDataPayload.date.toISOString());
-    expect(response.body.sonologist.id).toBe(newSonologist._id.toString());
-    expect(response.body.sonologist.name).toBe(newSonologist.name);
-    expect(response.body.sonologist.phone).toBe(newSonologist.phone);
-    expect(response.body.sonologist.email).toBe(newSonologist.email);
-    expect(response.body.sonologist.deleted).toBeUndefined();
     expect(response.body.partOfScan).toBe(newDataPayload.partOfScan);
     expect(response.body.findings).toBe(newDataPayload.findings);
     expect(response.body.deleted).toBeUndefined();
@@ -311,27 +294,6 @@ describe("USGReport", () => {
     });
   });
 
-  it("get all USGReports with filter by sonologist", async () => {
-    const sonologist = await doctorFactory.makeDoctor();
-    const usgReports = await Promise.all([
-      usgReportFactory.makeUSGReport({ sonologist: sonologist._id }),
-      usgReportFactory.makeUSGReport({ sonologist: sonologist._id }),
-      usgReportFactory.makeUSGReport(),
-    ]);
-
-    const usgReportIds = [usgReports[0], usgReports[1]].map((report) => report._id.toString());
-    const response = await client
-      .get(`/api/v1/usg-report?sonologist=${sonologist._id.toString()}`)
-      .set("Authorization", token);
-
-    expect(response.status).toBe(200);
-    expect(response.body.data.length).toBe(2);
-
-    response.body.data.forEach((usgReport) => {
-      expect(usgReportIds).toContain(usgReport.id);
-    });
-  });
-
   it("get all USGReports with filter by date", async () => {
     const usgReports = await Promise.all([
       usgReportFactory.makeUSGReport({ date: "01-01-2020" }),
@@ -421,67 +383,6 @@ describe("USGReport", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBe(usgReportIds.length);
 
-    response.body.data.forEach((usgReport) => {
-      expect(usgReportIds).toContain(usgReport.id);
-    });
-  });
-
-  it("get all USGReports with filter by findings, partOfScan, date and sonologist", async () => {
-    const sonologist = await doctorFactory.makeDoctor();
-    const usgReports = await Promise.all([
-      usgReportFactory.makeUSGReport({
-        findings: "Liver",
-        partOfScan: "Liver",
-        date: "01-01-2020",
-        sonologist: sonologist._id,
-      }),
-      usgReportFactory.makeUSGReport({
-        findings: "LivEr",
-        partOfScan: "Liver",
-        date: "01-02-2020",
-        sonologist: sonologist._id,
-      }),
-      usgReportFactory.makeUSGReport({
-        findings: "LIver",
-        partOfScan: "Liver",
-        date: "01-03-2020",
-        sonologist: sonologist._id,
-      }),
-      usgReportFactory.makeUSGReport({
-        findings: "Liverpool",
-        partOfScan: "LiVer",
-        date: "01-04-2020",
-        sonologist: sonologist._id,
-      }),
-      usgReportFactory.makeUSGReport({
-        findings: "Kidney",
-        partOfScan: "Liver",
-        date: "01-05-2020",
-        sonologist: sonologist._id,
-      }),
-      usgReportFactory.makeUSGReport({
-        findings: "Kidney",
-        partOfScan: "Kidney",
-        date: "01-06-2020",
-        sonologist: sonologist._id,
-      }),
-    ]);
-
-    const usgReportIds = usgReports.slice(1, 3).map((report) => report._id.toString());
-
-    const query = {
-      findings: "iver",
-      partOfScan: "iver",
-      date_before: "01-03-2020",
-      date_after: "01-02-2020",
-      sonologist: sonologist._id.toString(),
-    };
-    const response = await client
-      .get(`/api/v1/usg-report?${new URLSearchParams(query).toString()}`)
-      .set("Authorization", token);
-
-    expect(response.status).toBe(200);
-    expect(response.body.data.length).toBe(usgReportIds.length);
     response.body.data.forEach((usgReport) => {
       expect(usgReportIds).toContain(usgReport.id);
     });

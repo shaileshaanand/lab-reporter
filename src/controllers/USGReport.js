@@ -10,22 +10,17 @@ const newUSGReport = async (req, res) => {
     patient: Joi.string().required(),
     referrer: Joi.string().required(),
     date: Joi.date().required(),
-    sonologist: Joi.string().required(),
     partOfScan: Joi.string().required(),
     findings: Joi.string().required(),
   });
   Joi.assert(req.body, bodyValidator);
-  const usgReport = await (await USGReport.create(req.body)).populate(["patient", "referrer", "sonologist"]);
+  const usgReport = await (await USGReport.create(req.body)).populate(["patient", "referrer"]);
 
   res.status(201).json(sanitize(usgReport.toObject()));
 };
 
 const getUSGReport = async (req, res) => {
-  const usgReport = await USGReport.findOne({ _id: req.params.id, deleted: false }).populate([
-    "patient",
-    "referrer",
-    "sonologist",
-  ]);
+  const usgReport = await USGReport.findOne({ _id: req.params.id, deleted: false }).populate(["patient", "referrer"]);
   if (!usgReport) {
     throw new NotFoundError("USG Report not found");
   }
@@ -37,14 +32,13 @@ const updateUSGReport = async (req, res) => {
     patient: Joi.string(),
     referrer: Joi.string(),
     date: Joi.date(),
-    sonologist: Joi.string(),
     partOfScan: Joi.string(),
     findings: Joi.string(),
   });
   Joi.assert(req.body, bodyValidator);
   const usgReport = await USGReport.findOneAndUpdate({ _id: req.params.id, deleted: false }, req.body, {
     new: true,
-  }).populate(["patient", "referrer", "sonologist"]);
+  }).populate(["patient", "referrer"]);
   if (!usgReport) {
     throw new NotFoundError("USG Report not found");
   }
@@ -67,7 +61,6 @@ const listUSGReports = async (req, res) => {
   const paramsValidator = Joi.object({
     patient: Joi.string(),
     referrer: Joi.string(),
-    sonologist: Joi.string(),
     partOfScan: Joi.string(),
     date_before: Joi.date(),
     date_after: Joi.date(),
@@ -86,9 +79,6 @@ const listUSGReports = async (req, res) => {
   }
   if (req.query.referrer) {
     query.referrer = req.query.referrer;
-  }
-  if (req.query.sonologist) {
-    query.sonologist = req.query.sonologist;
   }
   if (req.query.partOfScan) {
     query.partOfScan = { $regex: req.query.partOfScan, $options: "i" };
@@ -109,7 +99,7 @@ const listUSGReports = async (req, res) => {
     .sort({ createdAt: "desc" })
     .skip((page - 1) * limit)
     .limit(limit + 1)
-    .populate(["patient", "referrer", "sonologist"])
+    .populate(["patient", "referrer"])
     .lean();
   let hasMore = false;
   if (usgReports.length === limit + 1) {

@@ -16,11 +16,6 @@ const USGReportSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    sonologist: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Doctor",
-      required: true,
-    },
     partOfScan: {
       type: String,
       required: true,
