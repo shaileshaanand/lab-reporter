@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "cross-env NODE_ENV=dev nodemon src",
+    "start:debug": "cross-env NODE_ENV=dev node --inspect=0.0.0.0 --inspect-brk src",
     "prod": "node src",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:watch": "cross-env NODE_ENV=test jest --watch --runInBand",
