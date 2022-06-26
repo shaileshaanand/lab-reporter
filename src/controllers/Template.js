@@ -17,7 +17,7 @@ const newTemplate = async (req, res) => {
 };
 
 const listTemplates = async (req, res) => {
-  const templates = await Template.find({ deleted: false }).lean();
+  const templates = await Template.find({ deleted: false }).sort({ createdAt: "desc" }).lean();
   res.status(StatusCodes.OK).json(templates.map((template) => sanitize(template)));
 };
 
