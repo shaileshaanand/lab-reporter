@@ -106,8 +106,9 @@ const listUSGReports = async (req, res) => {
     hasMore = true;
     usgReports.pop();
   }
-  const totalPages = Math.ceil((await USGReport.countDocuments(query)) / limit);
-  res.send({ data: usgReports.map((usgReport) => sanitize(usgReport)), hasMore, page, limit, totalPages });
+  const total = await USGReport.countDocuments(query);
+  const totalPages = Math.ceil(total / limit);
+  res.send({ data: usgReports.map((usgReport) => sanitize(usgReport)), hasMore, page, limit, totalPages, total });
 };
 
 module.exports = {

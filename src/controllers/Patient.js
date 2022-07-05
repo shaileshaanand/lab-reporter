@@ -50,8 +50,9 @@ const listPatients = async (req, res) => {
     patients.pop();
     hasMore = true;
   }
-  const totalPages = Math.ceil((await Patient.estimatedDocumentCount(query)) / limit);
-  res.status(200).json({ data: patients.map((patient) => sanitize(patient)), hasMore, page, limit, totalPages });
+  const total = await Patient.countDocuments(query);
+  const totalPages = Math.ceil(total / limit);
+  res.status(200).json({ data: patients.map((patient) => sanitize(patient)), hasMore, page, limit, totalPages, total });
 };
 
 const deletePatient = async (req, res) => {
