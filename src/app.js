@@ -13,7 +13,7 @@ const app = express();
 
 app.use(cors());
 app.use(helmet());
-if (process.env.NODE_ENV === "development") {
+if (process.env.NODE_ENV === "dev") {
   app.use(morgan("dev"));
 } else if (process.env.NODE_ENV === "production") {
   app.use(morgan("common"));
