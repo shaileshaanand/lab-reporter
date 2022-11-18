@@ -19,4 +19,8 @@ const omit = (obj) => {
   return Object.fromEntries(Object.entries(obj).filter(([_, v]) => !missing.includes(v)));
 };
 
-module.exports = { sanitize, omit };
+const getLastInsertedDocument = async (model) => {
+  return (await model.find().sort({ _id: -1 }).limit(1))[0];
+};
+
+module.exports = { sanitize, omit, getLastInsertedDocument };

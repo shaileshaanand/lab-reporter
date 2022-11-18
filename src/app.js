@@ -1,5 +1,6 @@
 const cors = require("cors");
 const express = require("express");
+const { google } = require("googleapis");
 const helmet = require("helmet");
 const morgan = require("morgan");
 
@@ -9,7 +10,16 @@ const authenticationMiddleware = require("./middleware/authentication");
 const errorHandlerMiddleware = require("./middleware/errorHandler");
 const { doctorRouter, patientRouter, usgReportRouter, userRouter, authRouter, templateRouter } = require("./routes");
 
+const { GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, BASE_URL } = process.env;
+const oauth2Client = new google.auth.OAuth2(
+  GOOGLE_OAUTH_CLIENT_ID,
+  GOOGLE_OAUTH_CLIENT_SECRET,
+  BASE_URL + "/oauth_callback",
+);
+
 const app = express();
+
+app.locals = { ...app.locals, oauth2Client };
 
 app.use(cors());
 app.use(helmet());
@@ -28,4 +38,5 @@ app.use("/api/v1/user", authenticationMiddleware, userRouter);
 app.use("/api/v1/template", authenticationMiddleware, templateRouter);
 
 app.use(errorHandlerMiddleware);
+
 module.exports = app;

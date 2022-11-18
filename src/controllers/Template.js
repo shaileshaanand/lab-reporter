@@ -2,17 +2,24 @@ const { StatusCodes } = require("http-status-codes");
 const Joi = require("joi");
 
 const { NotFoundError } = require("../errors");
+const { createBlankDocument } = require("../helpers/googleDrive");
 const { sanitize } = require("../helpers/utils");
 const { Template } = require("../models");
 
 const templateBodyValidator = Joi.object({
   name: Joi.string().min(3).required(),
-  content: Joi.string().required(),
 });
 
 const newTemplate = async (req, res) => {
   Joi.assert(req.body, templateBodyValidator);
-  const template = await Template.create(req.body);
+
+  const driveFileId = await createBlankDocument(
+    req.body.name,
+    req.app.locals.oauth2Client,
+    process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
+  );
+
+  const template = await Template.create({ ...req.body, driveFileId });
   res.status(StatusCodes.CREATED).json(sanitize(template.toObject()));
 };
 

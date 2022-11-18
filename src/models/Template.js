@@ -7,7 +7,7 @@ const TemplateSchema = new mongoose.Schema(
       required: true,
       minlength: 3,
     },
-    content: {
+    driveFileId: {
       type: String,
       required: true,
     },
