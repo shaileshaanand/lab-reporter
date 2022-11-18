@@ -4,15 +4,17 @@ const { Token } = require("../models");
 
 const { getLastInsertedDocument } = require("./utils");
 
-const driveClient = (oauth2Client) => {
+const driveClient = async (oauth2Client) => {
+  const token = await getLastInsertedDocument(Token);
+  oauth2Client.setCredentials(token.content);
   return google.drive({ version: "v3", auth: oauth2Client });
 };
 
 const createBlankDocument = async (name, oauth2Client, folderId) => {
-  const token = await getLastInsertedDocument(Token);
-  oauth2Client.setCredentials(token.content);
   return (
-    await driveClient(oauth2Client).files.create({
+    await (
+      await driveClient(oauth2Client)
+    ).files.create({
       resource: {
         name,
         parents: [folderId],
@@ -22,4 +24,17 @@ const createBlankDocument = async (name, oauth2Client, folderId) => {
   ).data.id;
 };
 
-module.exports = { createBlankDocument };
+const cloneDocument = async (sourceDocumentId, name, oauth2Client, folderId) => {
+  const resp = await (
+    await driveClient(oauth2Client)
+  ).files.copy({
+    fileId: sourceDocumentId,
+    requestBody: {
+      name,
+      parents: [folderId],
+    },
+  });
+  return resp.data.id;
+};
+
+module.exports = { createBlankDocument, cloneDocument };

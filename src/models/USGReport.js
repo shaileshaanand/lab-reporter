@@ -20,7 +20,7 @@ const USGReportSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    findings: {
+    driveFileId: {
       type: String,
       required: true,
     },

@@ -1,9 +1,11 @@
+const dayjs = require("dayjs");
 const Joi = require("joi");
 
 const { MAX_PAGE_SIZE, PAGE_SIZE } = require("../config/constants");
 const { NotFoundError } = require("../errors");
+const { cloneDocument } = require("../helpers/googleDrive");
 const { sanitize } = require("../helpers/utils");
-const { USGReport } = require("../models");
+const { USGReport, Template, Patient } = require("../models");
 
 const newUSGReport = async (req, res) => {
   const bodyValidator = Joi.object({
@@ -11,10 +13,21 @@ const newUSGReport = async (req, res) => {
     referrer: Joi.string().required(),
     date: Joi.date().required(),
     partOfScan: Joi.string().required(),
-    findings: Joi.string().required(),
+    template: Joi.string().required(),
   });
   Joi.assert(req.body, bodyValidator);
-  const usgReport = await (await USGReport.create(req.body)).populate(["patient", "referrer"]);
+  const [template, patient] = await Promise.all([
+    Template.findById(req.body.template).lean(),
+    Patient.findById(req.body.patient).lean(),
+  ]);
+  delete req.body.template;
+  const driveFileId = await cloneDocument(
+    template.driveFileId,
+    `${patient.name} - ${dayjs(req.body.date).format("DD-MM-YYYY")}`,
+    req.app.locals.oauth2Client,
+    process.env.GOOGLE_DRIVE_REPORTS_FOLDER_ID,
+  );
+  const usgReport = await (await USGReport.create({ ...req.body, driveFileId })).populate(["patient", "referrer"]);
 
   res.status(201).json(sanitize(usgReport.toObject()));
 };
