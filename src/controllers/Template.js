@@ -70,7 +70,10 @@ const syncTemplate = async (req, res) => {
 };
 
 const deleteTemplate = async (req, res) => {
-  await Template.findOneAndUpdate({ _id: req.params.id, deleted: false }, { deleted: true });
+  const template = await Template.findOneAndUpdate({ _id: req.params.id, deleted: false }, { deleted: true });
+  if (!template) {
+    throw NotFoundError("Template Not Found");
+  }
   res.status(StatusCodes.NO_CONTENT).send();
 };
 
