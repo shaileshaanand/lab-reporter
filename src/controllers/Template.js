@@ -2,7 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 const Joi = require("joi");
 
 const { NotFoundError } = require("../errors");
-const { createBlankDocument } = require("../helpers/googleDrive");
+const { createBlankDocument, getDocument } = require("../helpers/googleDrive");
 const { sanitize } = require("../helpers/utils");
 const { Template } = require("../models");
 
@@ -44,9 +44,17 @@ const updateTemplate = async (req, res) => {
   res.status(StatusCodes.OK).json(sanitize(template));
 };
 
+const syncTemplate = async (req, res) => {
+  const template = await Template.findById(req.params.id);
+  const document = await getDocument(template.driveFileId, req.app.locals.oauth2Client);
+  template.name = document.data.name;
+  template.save();
+  res.send(sanitize(template.toObject()));
+};
+
 const deleteTemplate = async (req, res) => {
   await Template.findOneAndUpdate({ _id: req.params.id, deleted: false }, { deleted: true });
   res.status(StatusCodes.NO_CONTENT).send();
 };
 
-module.exports = { newTemplate, listTemplates, getTemplate, updateTemplate, deleteTemplate };
+module.exports = { newTemplate, listTemplates, getTemplate, updateTemplate, syncTemplate, deleteTemplate };

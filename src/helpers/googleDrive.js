@@ -37,4 +37,10 @@ const cloneDocument = async (sourceDocumentId, name, oauth2Client, folderId) => 
   return resp.data.id;
 };
 
-module.exports = { createBlankDocument, cloneDocument };
+const getDocument = async (documentId, oauth2Client) => {
+  return (await driveClient(oauth2Client)).files.get({
+    fileId: documentId,
+  });
+};
+
+module.exports = { createBlankDocument, cloneDocument, getDocument };
