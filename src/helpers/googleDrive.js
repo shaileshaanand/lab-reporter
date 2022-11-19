@@ -44,13 +44,16 @@ const getDocument = async (documentId, oauth2Client) => {
 };
 
 const moveDocument = async (documentId, sourceFolderId, destFolderId, oauth2Client) => {
-  const dc = await driveClient(oauth2Client);
-  const doc = await dc.files.update({
-    addParents: destFolderId,
-    removeParents: sourceFolderId,
-    fileId: documentId,
-    fields: "name,parents",
-  });
-  return doc.data;
+  return (
+    await (
+      await driveClient(oauth2Client)
+    ).files.update({
+      addParents: destFolderId,
+      removeParents: sourceFolderId,
+      fileId: documentId,
+      fields: "name,parents",
+    })
+  ).data;
 };
+
 module.exports = { createBlankDocument, cloneDocument, getDocument, moveDocument };

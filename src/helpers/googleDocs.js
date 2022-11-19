@@ -11,7 +11,6 @@ const docsClient = async (oauth2Client) => {
 };
 
 const documentBatchReplace = async (documentId, values, oauth2Client) => {
-  const client = await docsClient(oauth2Client);
   const requests = Object.keys(values).map((key) => ({
     replaceAllText: {
       containsText: {
@@ -21,7 +20,7 @@ const documentBatchReplace = async (documentId, values, oauth2Client) => {
       replaceText: String(values[key]),
     },
   }));
-  await client.documents.batchUpdate({
+  return (await docsClient(oauth2Client)).documents.batchUpdate({
     documentId,
     requestBody: {
       requests,
