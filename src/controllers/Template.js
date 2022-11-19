@@ -2,7 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 const Joi = require("joi");
 
 const { NotFoundError } = require("../errors");
-const { createBlankDocument, getDocument, cloneDocument } = require("../helpers/googleDrive");
+const { createBlankDocument, getDocument, cloneDocument, moveDocument } = require("../helpers/googleDrive");
 const { sanitize } = require("../helpers/utils");
 const { Template, USGReport } = require("../models");
 
@@ -74,6 +74,12 @@ const deleteTemplate = async (req, res) => {
   if (!template) {
     throw NotFoundError("Template Not Found");
   }
+  moveDocument(
+    template.driveFileId,
+    process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
+    process.env.GOOGLE_DRIVE_DELETED_TEMPLATES_FOLDER_ID,
+    req.app.locals.oauth2Client,
+  );
   res.status(StatusCodes.NO_CONTENT).send();
 };
 
