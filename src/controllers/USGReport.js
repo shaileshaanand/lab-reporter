@@ -3,7 +3,7 @@ const Joi = require("joi");
 
 const { MAX_PAGE_SIZE, PAGE_SIZE } = require("../config/constants");
 const { NotFoundError } = require("../errors");
-const { cloneDocument } = require("../helpers/googleDrive");
+const { cloneDocument, moveDocument } = require("../helpers/googleDrive");
 const { sanitize } = require("../helpers/utils");
 const { USGReport, Template, Patient } = require("../models");
 
@@ -67,6 +67,12 @@ const deleteUSGReport = async (req, res) => {
   if (!usgReport) {
     throw new NotFoundError("USG Report not found");
   }
+  moveDocument(
+    usgReport.driveFileId,
+    process.env.GOOGLE_DRIVE_REPORTS_FOLDER_ID,
+    process.env.GOOGLE_DRIVE_DELETED_REPORTS_FOLDER_ID,
+    req.app.locals.oauth2Client,
+  );
   res.status(204).send();
 };
 

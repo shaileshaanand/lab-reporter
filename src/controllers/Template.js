@@ -2,22 +2,39 @@ const { StatusCodes } = require("http-status-codes");
 const Joi = require("joi");
 
 const { NotFoundError } = require("../errors");
-const { createBlankDocument, getDocument } = require("../helpers/googleDrive");
+const { createBlankDocument, getDocument, cloneDocument } = require("../helpers/googleDrive");
 const { sanitize } = require("../helpers/utils");
-const { Template } = require("../models");
+const { Template, USGReport } = require("../models");
 
 const templateBodyValidator = Joi.object({
   name: Joi.string().min(3).required(),
+  template: Joi.string(),
 });
 
 const newTemplate = async (req, res) => {
   Joi.assert(req.body, templateBodyValidator);
 
-  const driveFileId = await createBlankDocument(
-    req.body.name,
-    req.app.locals.oauth2Client,
-    process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
-  );
+  let driveFileId;
+
+  if (req.body.template) {
+    const [template, report] = await Promise.all([
+      Template.findById(req.body.template),
+      USGReport.findById(req.body.template),
+    ]);
+    driveFileId = await cloneDocument(
+      template ? template.driveFileId : report.driveFileId,
+      req.body.name,
+      req.app.locals.oauth2Client,
+      process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
+    );
+    delete req.body.template;
+  } else {
+    driveFileId = await createBlankDocument(
+      req.body.name,
+      req.app.locals.oauth2Client,
+      process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
+    );
+  }
 
   const template = await Template.create({ ...req.body, driveFileId });
   res.status(StatusCodes.CREATED).json(sanitize(template.toObject()));
