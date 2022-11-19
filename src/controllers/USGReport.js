@@ -3,9 +3,10 @@ const Joi = require("joi");
 
 const { MAX_PAGE_SIZE, PAGE_SIZE } = require("../config/constants");
 const { NotFoundError } = require("../errors");
+const { documentBatchReplace } = require("../helpers/googleDocs");
 const { cloneDocument, moveDocument } = require("../helpers/googleDrive");
 const { sanitize } = require("../helpers/utils");
-const { USGReport, Template, Patient } = require("../models");
+const { USGReport, Template, Patient, Doctor } = require("../models");
 
 const newUSGReport = async (req, res) => {
   const bodyValidator = Joi.object({
@@ -16,9 +17,10 @@ const newUSGReport = async (req, res) => {
     template: Joi.string().required(),
   });
   Joi.assert(req.body, bodyValidator);
-  const [template, patient] = await Promise.all([
+  const [template, patient, referrer] = await Promise.all([
     Template.findById(req.body.template).lean(),
     Patient.findById(req.body.patient).lean(),
+    Doctor.findById(req.body.referrer).lean(),
   ]);
   delete req.body.template;
   const driveFileId = await cloneDocument(
@@ -27,6 +29,20 @@ const newUSGReport = async (req, res) => {
     req.app.locals.oauth2Client,
     process.env.GOOGLE_DRIVE_REPORTS_FOLDER_ID,
   );
+
+  documentBatchReplace(
+    driveFileId,
+    {
+      name: patient.name,
+      date: dayjs(req.body.date).format("DD/MM/YYYY"),
+      referred_by: referrer.name,
+      part_of_scan: req.body.partOfScan,
+      age: patient.age,
+      sex: patient.gender === "male" ? "M" : "F",
+    },
+    req.app.locals.oauth2Client,
+  );
+
   const usgReport = await (await USGReport.create({ ...req.body, driveFileId })).populate(["patient", "referrer"]);
 
   res.status(201).json(sanitize(usgReport.toObject()));
