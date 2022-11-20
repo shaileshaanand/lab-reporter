@@ -2,10 +2,12 @@ const { default: faker } = require("@faker-js/faker");
 
 const { Template } = require("../models");
 
-const makeTemplate = ({ name = null, content = null } = {}) => {
+const { randomFileId } = require("./helpers");
+
+const makeTemplate = ({ name = null, driveFileId = null } = {}) => {
   const template = Template.create({
     name: name || faker.name.firstName(),
-    content: content || faker.lorem.paragraph(),
+    driveFileId: driveFileId || randomFileId,
   });
   return template;
 };

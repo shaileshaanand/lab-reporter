@@ -3,7 +3,9 @@ const { StatusCodes } = require("http-status-codes");
 const supertest = require("supertest");
 
 const app = require("../app");
-const { templateFactory, userFactory } = require("../factories");
+const { templateFactory, userFactory, usgReportFactory } = require("../factories");
+const { randomFileId } = require("../factories/helpers");
+const googleDrive = require("../helpers/googleDrive");
 const { Template } = require("../models");
 
 require("dotenv").config();
@@ -13,6 +15,8 @@ const { connectTestDb, disconnectTestDb, clearDb } = require("./helpers");
 
 let token;
 
+jest.mock("../helpers/googleDrive");
+
 describe("Template", () => {
   beforeAll(connectTestDb);
   afterAll(disconnectTestDb);
@@ -21,28 +25,91 @@ describe("Template", () => {
     clearDb();
     const user = await userFactory.makeUser();
     token = `Bearer ${user.issueToken()}`;
+    jest.resetAllMocks();
   }, 10000);
 
-  it("create a new Template", async () => {
+  it("create a new Template from blank", async () => {
     const template = {
       name: faker.name.firstName(),
-      content: faker.lorem.paragraph(),
     };
+
+    const driveFileId = randomFileId();
+    googleDrive.createBlankDocument.mockResolvedValue(driveFileId);
 
     const response = await client.post("/api/v1/template").set("Authorization", token).send(template);
 
     expect(response.status).toBe(StatusCodes.CREATED);
     expect(response.body.id).toBeDefined();
-    const createdTemplate = await Template.findOne({ _id: response.body.id });
+    const createdTemplate = await Template.findOne({ _id: response.body.id }).lean();
     expect(createdTemplate.name).toBe(template.name);
     expect(createdTemplate.content).toBe(template.content);
+    expect(createdTemplate.driveFileId).toBe(driveFileId);
     expect(createdTemplate.deleted).toBe(false);
+    expect(googleDrive.createBlankDocument).toHaveBeenCalledTimes(1);
+    expect(googleDrive.createBlankDocument).toHaveBeenCalledWith(
+      template.name,
+      expect.anything(),
+      process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
+    );
+  });
+
+  it("create a new Template from another template", async () => {
+    const existingTemplate = await templateFactory.makeTemplate();
+    const template = {
+      name: faker.name.firstName(),
+      template: existingTemplate.id,
+    };
+
+    const driveFileId = randomFileId();
+    googleDrive.cloneDocument.mockResolvedValue(driveFileId);
+
+    const response = await client.post("/api/v1/template").set("Authorization", token).send(template);
+
+    expect(response.status).toBe(StatusCodes.CREATED);
+    expect(response.body.id).toBeDefined();
+    const createdTemplate = await Template.findOne({ _id: response.body.id }).lean();
+    expect(createdTemplate.name).toBe(template.name);
+    expect(createdTemplate.driveFileId).toBe(driveFileId);
+    expect(createdTemplate.deleted).toBe(false);
+    expect(googleDrive.cloneDocument).toHaveBeenCalledTimes(1);
+    expect(googleDrive.cloneDocument).toHaveBeenCalledWith(
+      existingTemplate.driveFileId,
+      template.name,
+      expect.anything(),
+      process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
+    );
+  });
+
+  it("create a new Template from USGReport", async () => {
+    const usgReport = await usgReportFactory.makeUSGReport();
+    const template = {
+      name: faker.name.firstName(),
+      template: usgReport.id,
+    };
+
+    const driveFileId = randomFileId();
+    googleDrive.cloneDocument.mockResolvedValue(driveFileId);
+
+    const response = await client.post("/api/v1/template").set("Authorization", token).send(template);
+
+    expect(response.status).toBe(StatusCodes.CREATED);
+    expect(response.body.id).toBeDefined();
+    const createdTemplate = await Template.findOne({ _id: response.body.id }).lean();
+    expect(createdTemplate.name).toBe(template.name);
+    expect(createdTemplate.driveFileId).toBe(driveFileId);
+    expect(createdTemplate.deleted).toBe(false);
+    expect(googleDrive.cloneDocument).toHaveBeenCalledTimes(1);
+    expect(googleDrive.cloneDocument).toHaveBeenCalledWith(
+      usgReport.driveFileId,
+      template.name,
+      expect.anything(),
+      process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
+    );
   });
 
   it("should not create template with invalid name", async () => {
     const template = {
       name: "a",
-      content: faker.lorem.paragraph(),
     };
     const response = await client.post("/api/v1/template").set("Authorization", token).send(template);
     expect(response.status).toBe(StatusCodes.BAD_REQUEST);
@@ -81,7 +148,7 @@ describe("Template", () => {
     expect(response.status).toBe(StatusCodes.OK);
     expect(response.body.id).toBe(template.id);
     expect(response.body.name).toBe(template.name);
-    expect(response.body.content).toBe(template.content);
+    expect(response.body.driveFileId).toBe(template.driveFileId);
     expect(response.body.deleted).toBeUndefined();
   });
 
@@ -89,7 +156,6 @@ describe("Template", () => {
     const template = await templateFactory.makeTemplate();
     const updatedTemplate = {
       name: faker.name.firstName(),
-      content: faker.lorem.paragraph(),
     };
     const response = await client
       .put(`/api/v1/template/${template.id}`)
@@ -98,15 +164,25 @@ describe("Template", () => {
     expect(response.status).toBe(StatusCodes.OK);
     expect(response.body.id).toBe(template.id);
     expect(response.body.name).toBe(updatedTemplate.name);
-    expect(response.body.content).toBe(updatedTemplate.content);
     expect(response.body.deleted).toBeUndefined();
+  });
+
+  it("should not update template's template", async () => {
+    const template = await templateFactory.makeTemplate();
+    const updatedTemplate = {
+      template: randomFileId(),
+    };
+    const response = await client
+      .put(`/api/v1/template/${template.id}`)
+      .set("Authorization", token)
+      .send(updatedTemplate);
+    expect(response.status).toBe(StatusCodes.BAD_REQUEST);
   });
 
   it("should not update template with invalid name", async () => {
     const template = await templateFactory.makeTemplate();
     const updatedTemplate = {
       name: "a",
-      content: faker.lorem.paragraph(),
     };
     const response = await client
       .put(`/api/v1/template/${template.id}`)
@@ -131,7 +207,6 @@ describe("Template", () => {
     const template = await templateFactory.makeTemplate();
     const updatedTemplate = {
       name: faker.name.firstName(),
-      content: faker.lorem.paragraph(),
     };
     const response = await client.put(`/api/v1/template/${template.id}`).send(updatedTemplate);
     expect(response.status).toBe(StatusCodes.UNAUTHORIZED);
@@ -140,7 +215,6 @@ describe("Template", () => {
   it("should not update template if template does not exist", async () => {
     const updatedTemplate = {
       name: faker.name.firstName(),
-      content: faker.lorem.paragraph(),
     };
     const response = await client
       .put(`/api/v1/template/${faker.datatype.uuid()}`)
@@ -167,6 +241,13 @@ describe("Template", () => {
     const deletedTemplate = await Template.findById(template.id);
     expect(deletedTemplate).toBeDefined();
     expect(deletedTemplate.deleted).toBeTruthy();
+    expect(googleDrive.moveDocument).toHaveBeenCalledTimes(1);
+    expect(googleDrive.moveDocument).toHaveBeenCalledWith(
+      template.driveFileId,
+      process.env.GOOGLE_DRIVE_TEMPLATES_FOLDER_ID,
+      process.env.GOOGLE_DRIVE_DELETED_TEMPLATES_FOLDER_ID,
+      expect.anything(),
+    );
   });
 
   it("should not get deleted template", async () => {
