@@ -75,7 +75,7 @@ const syncTemplate = async (req, res) => {
 const deleteTemplate = async (req, res) => {
   const template = await Template.findOneAndUpdate({ _id: req.params.id, deleted: false }, { deleted: true });
   if (!template) {
-    throw NotFoundError("Template Not Found");
+    throw new NotFoundError("Template Not Found");
   }
   moveDocument(
     template.driveFileId,

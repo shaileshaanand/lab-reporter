@@ -223,6 +223,22 @@ describe("Template", () => {
     expect(response.status).toBe(StatusCodes.NOT_FOUND);
   });
 
+  it("should sync template", async () => {
+    const template = await templateFactory.makeTemplate();
+
+    const name = faker.name.findName();
+    googleDrive.getDocument.mockResolvedValue({ data: { name } });
+
+    const response = await client.post(`/api/v1/template/${template.id}/sync`).set("Authorization", token).send();
+
+    const updatedTemplate = await Template.findById(template.id);
+
+    expect(response.status).toBe(200);
+    expect(updatedTemplate.name).toBe(name);
+    expect(googleDrive.getDocument).toHaveBeenCalledTimes(1);
+    expect(googleDrive.getDocument).toHaveBeenCalledWith(template.driveFileId, expect.anything());
+  });
+
   it("should not delete template if user is not logged in", async () => {
     const template = await templateFactory.makeTemplate();
     const response = await client.delete(`/api/v1/template/${template.id}`);
@@ -254,6 +270,14 @@ describe("Template", () => {
     const template = await templateFactory.makeTemplate();
     await client.delete(`/api/v1/template/${template.id}`).set("Authorization", token);
     const response = await client.get(`/api/v1/template/${template.id}`).set("Authorization", token);
+    expect(response.status).toBe(StatusCodes.NOT_FOUND);
+  });
+
+  it("should not delete deleted template", async () => {
+    const template = await templateFactory.makeTemplate();
+    template.deleted = true;
+    await template.save();
+    const response = await client.delete(`/api/v1/template/${template.id}`).set("Authorization", token).send();
     expect(response.status).toBe(StatusCodes.NOT_FOUND);
   });
 });
