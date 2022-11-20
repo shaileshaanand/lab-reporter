@@ -1,12 +1,18 @@
 const { URLSearchParams } = require("url");
 
 const { faker } = require("@faker-js/faker");
+const dayjs = require("dayjs");
+const { StatusCodes } = require("http-status-codes");
 const supertest = require("supertest");
 
 const app = require("../app");
 const { patientFactory, usgReportFactory, doctorFactory, userFactory } = require("../factories");
 const { makeDoctor } = require("../factories/Doctor");
+const { randomFileId } = require("../factories/helpers");
 const { makePatient } = require("../factories/Patient");
+const { makeTemplate } = require("../factories/Template");
+const googleDocs = require("../helpers/googleDocs");
+const googleDrive = require("../helpers/googleDrive");
 const { Patient, Doctor, USGReport } = require("../models");
 
 require("dotenv").config();
@@ -15,6 +21,9 @@ const client = supertest(app);
 const { connectTestDb, disconnectTestDb, clearDb } = require("./helpers");
 
 let token;
+
+jest.mock("../helpers/googleDrive");
+jest.mock("../helpers/googleDocs");
 
 describe("USGReport", () => {
   beforeAll(connectTestDb);
@@ -29,13 +38,17 @@ describe("USGReport", () => {
   it("create a new USGReport", async () => {
     const patient = await makePatient();
     const referrer = await makeDoctor();
+    const template = await makeTemplate();
     const usgReport = {
       patient: patient.id,
       referrer: referrer.id,
       date: faker.date.future(),
       partOfScan: faker.random.word(),
-      findings: faker.random.words(20),
+      template: template.id,
     };
+
+    const driveFileId = randomFileId();
+    googleDrive.cloneDocument.mockResolvedValue(driveFileId);
 
     const response = await client.post("/api/v1/usg-report").set("Authorization", token).send(usgReport);
 
@@ -46,8 +59,28 @@ describe("USGReport", () => {
     expect(createdUSGReport.referrer._id.toString()).toBe(referrer._id.toString());
     expect(createdUSGReport.date.toISOString()).toBe(usgReport.date.toISOString());
     expect(createdUSGReport.partOfScan).toBe(usgReport.partOfScan);
-    expect(createdUSGReport.findings).toBe(usgReport.findings);
+    expect(createdUSGReport.driveFileId).toBe(driveFileId);
     expect(createdUSGReport.deleted).toBe(false);
+    expect(googleDrive.cloneDocument).toHaveBeenCalledTimes(1);
+    expect(googleDrive.cloneDocument).toHaveBeenCalledWith(
+      template.driveFileId,
+      `${patient.name} - ${dayjs(usgReport.date).format("DD-MM-YYYY")}`,
+      expect.anything(),
+      process.env.GOOGLE_DRIVE_REPORTS_FOLDER_ID,
+    );
+    expect(googleDocs.documentBatchReplace).toHaveBeenCalledTimes(1);
+    expect(googleDocs.documentBatchReplace).toHaveBeenCalledWith(
+      createdUSGReport.driveFileId,
+      {
+        name: patient.name,
+        date: dayjs(usgReport.date).format("DD/MM/YYYY"),
+        referred_by: referrer.name,
+        part_of_scan: usgReport.partOfScan,
+        age: patient.age,
+        sex: patient.gender === "male" ? "M" : "F",
+      },
+      expect.anything(),
+    );
   });
 
   it("list all USGReports", async () => {
@@ -66,7 +99,7 @@ describe("USGReport", () => {
       expect(usgReport.referrer.id).toBeDefined();
       expect(usgReport.date).toBeDefined();
       expect(usgReport.partOfScan).toBeDefined();
-      expect(usgReport.findings).toBeDefined();
+      expect(usgReport.driveFileId).toBeDefined();
       expect(usgReport.deleted).toBeUndefined();
     });
   });
@@ -139,7 +172,7 @@ describe("USGReport", () => {
     expect(response.body.referrer.deleted).toBeUndefined();
     expect(response.body.date).toBe(usgReport.date.toISOString());
     expect(response.body.partOfScan).toBe(usgReport.partOfScan);
-    expect(response.body.findings).toBe(usgReport.findings);
+    expect(response.body.driveFileId).toBe(usgReport.driveFileId);
     expect(response.body.deleted).toBeUndefined();
   });
 
@@ -154,7 +187,6 @@ describe("USGReport", () => {
       referrer: newReferrer._id,
       date: faker.date.future(),
       partOfScan: faker.lorem.word(),
-      findings: faker.lorem.sentence(),
     };
 
     const response = await client
@@ -180,8 +212,18 @@ describe("USGReport", () => {
     expect(response.body.referrer.deleted).toBeUndefined();
     expect(response.body.date).toBe(newDataPayload.date.toISOString());
     expect(response.body.partOfScan).toBe(newDataPayload.partOfScan);
-    expect(response.body.findings).toBe(newDataPayload.findings);
     expect(response.body.deleted).toBeUndefined();
+  });
+
+  it("fail to update USGReport's template", async () => {
+    const usgReport = await usgReportFactory.makeUSGReport();
+    await usgReport.save();
+
+    const response = await client.put(`/api/v1/usg-report/${usgReport.id}`).set("Authorization", token).send({
+      template: randomFileId(),
+    });
+
+    expect(response.status).toBe(StatusCodes.BAD_REQUEST);
   });
 
   it("delete a USGReport", async () => {
@@ -191,6 +233,13 @@ describe("USGReport", () => {
     expect(response.status).toBe(204);
     const deletedUSGReport = await USGReport.findOne({ _id: usgReport.id });
     expect(deletedUSGReport.deleted).toBe(true);
+    expect(googleDrive.moveDocument).toHaveBeenCalledTimes(1);
+    expect(googleDrive.moveDocument).toHaveBeenCalledWith(
+      usgReport.driveFileId,
+      process.env.GOOGLE_DRIVE_REPORTS_FOLDER_ID,
+      process.env.GOOGLE_DRIVE_DELETED_REPORTS_FOLDER_ID,
+      expect.anything(),
+    );
   });
 
   it("get a deleted USGReport", async () => {
@@ -206,14 +255,10 @@ describe("USGReport", () => {
     const usgReport = await usgReportFactory.makeUSGReport();
     usgReport.deleted = true;
     await usgReport.save();
-    const response = await client
-      .put(`/api/v1/usg-report/${usgReport.id}`)
-      .set("Authorization", token)
-      .send({
-        date: faker.date.future(),
-        partOfScan: faker.random.word(),
-        findings: faker.random.words(20),
-      });
+    const response = await client.put(`/api/v1/usg-report/${usgReport.id}`).set("Authorization", token).send({
+      date: faker.date.future(),
+      partOfScan: faker.random.word(),
+    });
 
     expect(response.status).toBe(404);
   });
@@ -234,14 +279,10 @@ describe("USGReport", () => {
   });
 
   it("update a non-existing USGReport", async () => {
-    const response = await client
-      .put(`/api/v1/usg-report/${faker.datatype.uuid()}`)
-      .set("Authorization", token)
-      .send({
-        date: faker.date.future(),
-        partOfScan: faker.random.word(),
-        findings: faker.random.words(20),
-      });
+    const response = await client.put(`/api/v1/usg-report/${faker.datatype.uuid()}`).set("Authorization", token).send({
+      date: faker.date.future(),
+      partOfScan: faker.random.word(),
+    });
 
     expect(response.status).toBe(404);
   });
@@ -337,40 +378,18 @@ describe("USGReport", () => {
     });
   });
 
-  it("get all USGReports with filter by findings", async () => {
+  it("get all USGReports with filter by partOfScan and date", async () => {
     const usgReports = await Promise.all([
-      usgReportFactory.makeUSGReport({ findings: "Liver" }),
-      usgReportFactory.makeUSGReport({ findings: "LivEr" }),
-      usgReportFactory.makeUSGReport({ findings: "LIver" }),
-      usgReportFactory.makeUSGReport({ findings: "Liverpool" }),
-      usgReportFactory.makeUSGReport({ findings: "Kidney" }),
-      usgReportFactory.makeUSGReport({ findings: "Kidney" }),
-    ]);
-
-    const usgReportIds = usgReports.slice(0, 4).map((report) => report._id.toString());
-    const response = await client.get("/api/v1/usg-report?findings=iver").set("Authorization", token);
-
-    expect(response.status).toBe(200);
-    expect(response.body.data.length).toBe(4);
-
-    response.body.data.forEach((usgReport) => {
-      expect(usgReportIds).toContain(usgReport.id);
-    });
-  });
-
-  it("get all USGReports with filter by findings, partOfScan and date", async () => {
-    const usgReports = await Promise.all([
-      usgReportFactory.makeUSGReport({ findings: "Liver", partOfScan: "Liver", date: "01-01-2020" }),
-      usgReportFactory.makeUSGReport({ findings: "LivEr", partOfScan: "Liver", date: "01-02-2020" }),
-      usgReportFactory.makeUSGReport({ findings: "LIver", partOfScan: "Liver", date: "01-03-2020" }),
-      usgReportFactory.makeUSGReport({ findings: "Liverpool", partOfScan: "LiVer", date: "01-04-2020" }),
-      usgReportFactory.makeUSGReport({ findings: "Kidney", partOfScan: "Liver", date: "01-05-2020" }),
-      usgReportFactory.makeUSGReport({ findings: "Kidney", partOfScan: "Kidney", date: "01-06-2020" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "Liver", date: "01-01-2020" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "Liver", date: "01-02-2020" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "Liver", date: "01-03-2020" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "LiVer", date: "01-04-2020" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "Liver", date: "01-05-2020" }),
+      usgReportFactory.makeUSGReport({ partOfScan: "Kidney", date: "01-06-2020" }),
     ]);
 
     const usgReportIds = usgReports.slice(1, 3).map((report) => report._id.toString());
     const query = {
-      findings: "iver",
       partOfScan: "iver",
       date_before: "01-03-2020",
       date_after: "01-02-2020",
