@@ -62,7 +62,6 @@ const updateUSGReport = async (req, res) => {
     referrer: Joi.string(),
     date: Joi.date(),
     partOfScan: Joi.string(),
-    findings: Joi.string(),
   });
   Joi.assert(req.body, bodyValidator);
   const usgReport = await USGReport.findOneAndUpdate({ _id: req.params.id, deleted: false }, req.body, {
@@ -99,7 +98,6 @@ const listUSGReports = async (req, res) => {
     partOfScan: Joi.string(),
     date_before: Joi.date(),
     date_after: Joi.date(),
-    findings: Joi.string(),
     page: Joi.number().min(1),
     limit: Joi.number().min(1).max(MAX_PAGE_SIZE),
   });
@@ -123,9 +121,6 @@ const listUSGReports = async (req, res) => {
   }
   if (req.query.date_after) {
     query.date = { ...query.date, $gte: req.query.date_after };
-  }
-  if (req.query.findings) {
-    query.findings = { $regex: req.query.findings, $options: "i" };
   }
   if (Object.keys(query.date).length === 0) {
     delete query.date;
