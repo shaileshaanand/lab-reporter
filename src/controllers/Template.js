@@ -54,7 +54,10 @@ const getTemplate = async (req, res) => {
 };
 
 const updateTemplate = async (req, res) => {
-  Joi.assert(req.body, templateBodyValidator);
+  const bodyValidator = Joi.object({
+    name: Joi.string().min(3).required(),
+  });
+  Joi.assert(req.body, bodyValidator);
   const template = await Template.findOneAndUpdate({ _id: req.params.id, deleted: false }, req.body, {
     new: true,
   }).lean();
