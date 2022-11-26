@@ -15,7 +15,6 @@ const newTemplate = async (req, res) => {
   Joi.assert(req.body, templateBodyValidator);
 
   let driveFileId;
-
   if (req.body.template) {
     const [template, report] = await Promise.all([
       Template.findById(req.body.template),
