@@ -23,6 +23,7 @@ services:
       - GOOGLE_DRIVE_REPORTS_FOLDER_ID
       - GOOGLE_DRIVE_DELETED_REPORTS_FOLDER_ID
       - BASE_URL
+      - FRONTEND_URL
     depends_on:
       - db
   db:

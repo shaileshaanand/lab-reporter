@@ -10,11 +10,11 @@ const authenticationMiddleware = require("./middleware/authentication");
 const errorHandlerMiddleware = require("./middleware/errorHandler");
 const { doctorRouter, patientRouter, usgReportRouter, userRouter, authRouter, templateRouter } = require("./routes");
 
-const { GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, BASE_URL } = process.env;
+const { GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, FRONTEND_URL } = process.env;
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET,
-  BASE_URL + "/oauth_callback",
+  FRONTEND_URL + "/oauth-callback",
 );
 
 const app = express();
