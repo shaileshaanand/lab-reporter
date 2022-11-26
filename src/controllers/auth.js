@@ -39,7 +39,7 @@ const googleLogin = async (req, res) => {
     code: Joi.string().required(),
   });
   Joi.assert(req.body, bodyValidator);
-  const code = req.body;
+  const { code } = req.body;
   const { tokens } = await req.app.locals.oauth2Client.getToken(code);
   Token.create({
     content: tokens,
